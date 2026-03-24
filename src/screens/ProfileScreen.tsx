@@ -3,14 +3,19 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useStore } from '../store';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { getLevelTitle } from '../utils/levels';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation';
+import type { RootStackParamList, TabParamList } from '../navigation';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<TabParamList, 'Profile'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { profile, habits, themeMode } = useStore();
-  
+
   const isDarkMode = themeMode === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
   const levelTitle = getLevelTitle(profile.level);
@@ -18,21 +23,21 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   // Calcular estatísticas
   const totalHabits = habits.length;
   const maxStreak = Math.max(...habits.map(h => h.streak), 0);
-  
+
   // Taxa de conclusão da semana (últimos 7 dias)
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - i);
     return date.toISOString().split('T')[0];
   });
-  
+
   const completedInLast7Days = habits.reduce((acc, habit) => {
     const completedDays = habit.completedDates.filter(date => last7Days.includes(date));
     return acc + completedDays.length;
   }, 0);
-  
+
   const possibleCompletions = totalHabits * 7;
-  const weeklyRate = possibleCompletions > 0 
+  const weeklyRate = possibleCompletions > 0
     ? Math.round((completedInLast7Days / possibleCompletions) * 100)
     : 0;
 
@@ -58,7 +63,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
           📊 Estatísticas
         </Text>
-        
+
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <Text style={[styles.statNumber, { color: colors.primary.main }]}>

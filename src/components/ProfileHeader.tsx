@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { UserProfile } from '../types';
 import { colors, spacing, typography, borderRadius } from '../theme';
-import { getXPForNextLevel, getLevelTitle } from '../utils/levels';
+import { getLevelTitle, getCurrentLevelXP, getXPForCurrentLevel } from '../utils/levels';
 
 interface ProfileHeaderProps {
   profile: UserProfile;
@@ -11,8 +11,9 @@ interface ProfileHeaderProps {
 
 export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isDarkMode }) => {
   const theme = isDarkMode ? colors.dark : colors.light;
-  const xpForNext = getXPForNextLevel(profile.level);
-  const progressPercent = (profile.totalXP / xpForNext) * 100;
+  const currentLevelXP = getCurrentLevelXP(profile.totalXP);
+  const xpForCurrentLevel = getXPForCurrentLevel(profile.totalXP);
+  const progressPercent = (currentLevelXP / xpForCurrentLevel) * 100;
   const levelTitle = getLevelTitle(profile.level);
 
   return (
@@ -42,7 +43,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isDarkMod
           />
         </View>
         <Text style={[styles.xpText, { color: theme.textSecondary }]}>
-          {profile.totalXP}/{xpForNext} XP
+          {currentLevelXP}/{xpForCurrentLevel} XP
         </Text>
       </View>
     </View>
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 8,
-    borderRadius: borderRadius.xxs,
+    borderRadius: borderRadius.xs,
     overflow: 'hidden',
   },
   progressFill: {

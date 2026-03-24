@@ -52,10 +52,10 @@ export const useStore = create<AppState>((set, get) => ({
   loadData: async () => {
     try {
       const [habitsData, profileData, themeData, premiumData] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.HABITS),
-        AsyncStorage.getItem(STORAGE_KEYS.PROFILE),
-        AsyncStorage.getItem(STORAGE_KEYS.THEME),
-        AsyncStorage.getItem(STORAGE_KEYS.PREMIUM),
+        AsyncStorage.getItem(STORAGE_KEYS.HABITS).catch(() => null),
+        AsyncStorage.getItem(STORAGE_KEYS.PROFILE).catch(() => null),
+        AsyncStorage.getItem(STORAGE_KEYS.THEME).catch(() => null),
+        AsyncStorage.getItem(STORAGE_KEYS.PREMIUM).catch(() => null),
       ]);
 
       const habits: Habit[] = habitsData ? JSON.parse(habitsData) : [];
@@ -67,7 +67,6 @@ export const useStore = create<AppState>((set, get) => ({
       const updatedHabits = habits.map(habit => {
         if (!habit.lastCompletedDate) return habit;
 
-        const today = getTodayString();
         const isCompletedToday = isToday(habit.lastCompletedDate);
         const wasCompletedYesterday = isYesterday(habit.lastCompletedDate);
 
@@ -89,11 +88,20 @@ export const useStore = create<AppState>((set, get) => ({
 
       // Salva os hábitos atualizados se houve mudança
       if (JSON.stringify(habits) !== JSON.stringify(updatedHabits)) {
-        await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(updatedHabits));
+        await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(updatedHabits)).catch(() => {
+          console.log('Could not save updated habits');
+        });
       }
     } catch (error) {
       console.error('Error loading data:', error);
-      set({ isLoading: false });
+      // Set default values even if storage fails
+      set({
+        habits: [],
+        profile: DEFAULT_PROFILE,
+        themeMode: 'light',
+        isPremium: false,
+        isLoading: false,
+      });
     }
   },
 
@@ -110,7 +118,9 @@ export const useStore = create<AppState>((set, get) => ({
 
     const habits = [...get().habits, newHabit];
     set({ habits });
-    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits));
+    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch((error) => {
+      console.error('Failed to save habit:', error);
+    });
   },
 
   editHabit: async (id: string, name: string, emoji: string) => {
@@ -118,13 +128,17 @@ export const useStore = create<AppState>((set, get) => ({
       habit.id === id ? { ...habit, name, emoji } : habit
     );
     set({ habits });
-    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits));
+    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch((error) => {
+      console.error('Failed to update habit:', error);
+    });
   },
 
   deleteHabit: async (id: string) => {
     const habits = get().habits.filter(habit => habit.id !== id);
     set({ habits });
-    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits));
+    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch((error) => {
+      console.error('Failed to delete habit:', error);
+    });
   },
 
   checkHabit: async (id: string): Promise<CheckResult> => {
@@ -177,8 +191,8 @@ export const useStore = create<AppState>((set, get) => ({
     set({ habits: updatedHabits, profile: updatedProfile });
 
     await Promise.all([
-      AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(updatedHabits)),
-      AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updatedProfile)),
+      AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(updatedHabits)).catch(() => { }),
+      AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updatedProfile)).catch(() => { }),
     ]);
 
     return {
@@ -191,12 +205,14 @@ export const useStore = create<AppState>((set, get) => ({
   toggleTheme: () => {
     const newTheme = get().themeMode === 'light' ? 'dark' : 'light';
     set({ themeMode: newTheme });
-    AsyncStorage.setItem(STORAGE_KEYS.THEME, newTheme);
+    AsyncStorage.setItem(STORAGE_KEYS.THEME, newTheme).catch(() => { });
   },
 
   updateProfile: async (name: string, avatar: string) => {
     const profile = { ...get().profile, name, avatar };
     set({ profile });
-    await AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+    await AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile)).catch((error) => {
+      console.error('Failed to update profile:', error);
+    });
   },
 }));

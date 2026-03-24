@@ -1,4 +1,5 @@
 import React from 'react';
+import { Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -52,7 +53,7 @@ function MainTabs() {
         options={{
           title: 'Meus Hábitos',
           tabBarLabel: 'Hábitos',
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>🎯</span>,
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🎯</Text>,
         }}
       />
       <Tab.Screen
@@ -61,7 +62,7 @@ function MainTabs() {
         options={{
           title: 'Perfil',
           tabBarLabel: 'Perfil',
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>👤</span>,
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>👤</Text>,
         }}
       />
     </Tab.Navigator>
@@ -73,8 +74,38 @@ export function RootNavigator() {
   const isDarkMode = themeMode === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
 
+  const navigationTheme = {
+    dark: isDarkMode,
+    colors: {
+      primary: colors.primary.main,
+      background: theme.background,
+      card: theme.surface,
+      text: theme.textPrimary,
+      border: theme.border,
+      notification: colors.primary.main,
+    },
+    fonts: {
+      regular: {
+        fontFamily: 'System',
+        fontWeight: '400' as const,
+      },
+      medium: {
+        fontFamily: 'System',
+        fontWeight: '500' as const,
+      },
+      bold: {
+        fontFamily: 'System',
+        fontWeight: '700' as const,
+      },
+      heavy: {
+        fontFamily: 'System',
+        fontWeight: '900' as const,
+      },
+    },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator
         screenOptions={{
           headerStyle: {
