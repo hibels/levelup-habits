@@ -102,10 +102,10 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     backgroundColor: colors.secondary.main,
-    borderRadius: borderRadius.xxs,
+    borderRadius: 4,
   },
   xpText: {
     ...typography.caption,
-    marginTop: spacing.xxs,
+    marginTop: 4,
   },
 });
