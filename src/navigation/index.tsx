@@ -1,8 +1,8 @@
 import React from 'react';
-import { Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
 import { colors } from '../theme';
 
@@ -11,11 +11,13 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { EditHabitScreen } from '../screens/EditHabitScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
+import { WeeklyReviewScreen } from '../screens/WeeklyReviewScreen';
 
 export type RootStackParamList = {
   MainTabs: undefined;
   EditHabit: { habitId: string | undefined };
   Paywall: undefined;
+  WeeklyReview: undefined;
 };
 
 export type TabParamList = {
@@ -40,9 +42,7 @@ function MainTabs() {
           backgroundColor: theme.surface,
           borderTopColor: theme.border,
         },
-        headerStyle: {
-          backgroundColor: theme.surface,
-        },
+        headerStyle: { backgroundColor: theme.surface },
         headerTintColor: theme.textPrimary,
         headerShadowVisible: false,
       }}
@@ -53,7 +53,9 @@ function MainTabs() {
         options={{
           title: 'Meus Hábitos',
           tabBarLabel: 'Hábitos',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🎯</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="checkmark-circle-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -62,7 +64,9 @@ function MainTabs() {
         options={{
           title: 'Perfil',
           tabBarLabel: 'Perfil',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>👤</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -85,22 +89,10 @@ export function RootNavigator() {
       notification: colors.primary.main,
     },
     fonts: {
-      regular: {
-        fontFamily: 'System',
-        fontWeight: '400' as const,
-      },
-      medium: {
-        fontFamily: 'System',
-        fontWeight: '500' as const,
-      },
-      bold: {
-        fontFamily: 'System',
-        fontWeight: '700' as const,
-      },
-      heavy: {
-        fontFamily: 'System',
-        fontWeight: '900' as const,
-      },
+      regular: { fontFamily: 'System', fontWeight: '400' as const },
+      medium: { fontFamily: 'System', fontWeight: '500' as const },
+      bold: { fontFamily: 'System', fontWeight: '700' as const },
+      heavy: { fontFamily: 'System', fontWeight: '900' as const },
     },
   };
 
@@ -108,36 +100,27 @@ export function RootNavigator() {
     <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator
         screenOptions={{
-          headerStyle: {
-            backgroundColor: theme.surface,
-          },
+          headerStyle: { backgroundColor: theme.surface },
           headerTintColor: theme.textPrimary,
           headerShadowVisible: false,
-          contentStyle: {
-            backgroundColor: theme.background,
-          },
+          contentStyle: { backgroundColor: theme.background },
         }}
       >
-        <Stack.Screen
-          name="MainTabs"
-          component={MainTabs}
-          options={{ headerShown: false }}
-        />
+        <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
         <Stack.Screen
           name="EditHabit"
           component={EditHabitScreen}
-          options={{
-            presentation: 'modal',
-            title: 'Novo Hábito',
-          }}
+          options={{ presentation: 'modal', title: 'Novo Hábito' }}
         />
         <Stack.Screen
           name="Paywall"
           component={PaywallScreen}
-          options={{
-            presentation: 'modal',
-            headerShown: false,
-          }}
+          options={{ presentation: 'modal', headerShown: false }}
+        />
+        <Stack.Screen
+          name="WeeklyReview"
+          component={WeeklyReviewScreen}
+          options={{ presentation: 'modal', headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

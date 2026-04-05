@@ -4,106 +4,164 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
-  Animated,
+  Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Habit } from '../types';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { useStore } from '../store';
-import { getTodayString } from '../utils/dates';
+import { getTodayString, getCurrentWeekDates, WEEKDAY_LABELS } from '../utils/dates';
 
 interface HabitCardProps {
   habit: Habit;
   isDarkMode: boolean;
-  onCheckComplete?: (xpGained: number, newLevel: number | null, newStreak: number) => void;
+  onLongPress?: () => void;
+  onCheckComplete?: (xpGained: number, newLevel: number | null, newStreak: number, weekGoalReached: boolean) => void;
 }
 
-export const HabitCard: React.FC<HabitCardProps> = ({ habit, isDarkMode, onCheckComplete }) => {
+export const HabitCard: React.FC<HabitCardProps> = ({
+  habit,
+  isDarkMode,
+  onLongPress,
+  onCheckComplete,
+}) => {
   const [isLoading, setIsLoading] = useState(false);
   const checkHabit = useStore(state => state.checkHabit);
-
-  const today = getTodayString();
-  const isCompleted = habit.completedDates.includes(today);
+  const uncheckHabit = useStore(state => state.uncheckHabit);
 
   const theme = isDarkMode ? colors.dark : colors.light;
+  const today = getTodayString();
+  const weekDates = getCurrentWeekDates();
+  const isCompletedToday = habit.completedDates.includes(today);
 
-  const handleCheck = async () => {
-    if (isCompleted || isLoading) return;
+  const completionsThisWeek = weekDates.filter(d => habit.completedDates.includes(d)).length;
+  const goalProgress = Math.min(completionsThisWeek, habit.weeklyGoal);
+  const goalReached = completionsThisWeek >= habit.weeklyGoal;
+
+  const handleDayPress = async (date: string) => {
+    if (date !== today || isLoading) return;
 
     setIsLoading(true);
     try {
-      const result = await checkHabit(habit.id);
-      onCheckComplete?.(result.xpGained, result.newLevel, result.newStreak);
+      if (isCompletedToday) {
+        await uncheckHabit(habit.id);
+      } else {
+        const result = await checkHabit(habit.id);
+        onCheckComplete?.(result.xpGained, result.newLevel, result.newStreak, result.weekGoalReached);
+      }
     } catch (error) {
-      console.error('Error checking habit:', error);
+      console.error('Error toggling habit:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const streakColor = goalReached ? colors.primary.main : colors.secondary.main;
+
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.container,
         {
           backgroundColor: theme.card,
-          borderColor: theme.border,
-          opacity: isCompleted ? 0.6 : 1,
+          borderColor: goalReached ? `${colors.primary.main}40` : theme.border,
         },
         !isDarkMode && styles.shadow,
       ]}
+      onLongPress={onLongPress}
+      activeOpacity={0.95}
     >
+      {/* Header: nome + streak */}
       <View style={styles.header}>
-        <View style={styles.titleContainer}>
+        <View style={styles.titleRow}>
           <Text style={styles.emoji}>{habit.emoji}</Text>
           <Text
             style={[styles.name, { color: theme.textPrimary }]}
             numberOfLines={1}
-            ellipsizeMode="tail"
           >
             {habit.name}
           </Text>
         </View>
+
         {habit.streak > 0 && (
-          <View
-            style={[
-              styles.streakBadge,
-              { backgroundColor: `${colors.accent.main}1A` },
-            ]}
-          >
-            <Text style={styles.streakText}>🔥 {habit.streak}</Text>
+          <View style={[styles.streakBadge, { backgroundColor: `${streakColor}18` }]}>
+            <Ionicons name="flame" size={13} color={streakColor} />
+            <Text style={[styles.streakText, { color: streakColor }]}>
+              {habit.streak}
+            </Text>
           </View>
         )}
       </View>
 
-      <TouchableOpacity
-        style={[
-          styles.button,
-          isCompleted
-            ? { backgroundColor: colors.semantic.success }
-            : {
-                borderColor: colors.primary.main,
-                borderWidth: 2,
-              },
-        ]}
-        onPress={handleCheck}
-        disabled={isCompleted || isLoading}
-        activeOpacity={0.7}
-      >
-        {isLoading ? (
-          <ActivityIndicator color={colors.primary.main} />
-        ) : (
-          <Text
+      {/* Progress bar da meta semanal */}
+      <View style={styles.progressRow}>
+        <View style={[styles.progressTrack, { backgroundColor: theme.border }]}>
+          <View
             style={[
-              styles.buttonText,
-              { color: isCompleted ? '#FFFFFF' : colors.primary.main },
+              styles.progressFill,
+              {
+                backgroundColor: goalReached ? colors.primary.main : colors.primary.light,
+                width: `${(goalProgress / habit.weeklyGoal) * 100}%`,
+              },
             ]}
-          >
-            {isCompleted ? '✓ Concluído' : 'Marcar como concluído'}
-          </Text>
-        )}
-      </TouchableOpacity>
-    </View>
+          />
+        </View>
+        <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
+          {goalProgress}/{habit.weeklyGoal}
+        </Text>
+      </View>
+
+      {/* Checkboxes dos 7 dias da semana */}
+      <View style={styles.weekRow}>
+        {weekDates.map((date, index) => {
+          const isChecked = habit.completedDates.includes(date);
+          const isCurrentDay = date === today;
+          const isFuture = date > today;
+
+          return (
+            <TouchableOpacity
+              key={date}
+              style={styles.dayColumn}
+              onPress={() => handleDayPress(date)}
+              disabled={!isCurrentDay || isLoading}
+              activeOpacity={isCurrentDay ? 0.6 : 1}
+            >
+              <Text style={[styles.dayLabel, { color: theme.textSecondary }]}>
+                {WEEKDAY_LABELS[index]}
+              </Text>
+              <View
+                style={[
+                  styles.dayBox,
+                  isChecked && { backgroundColor: colors.primary.main, borderColor: colors.primary.main },
+                  !isChecked && isCurrentDay && {
+                    borderColor: colors.primary.main,
+                    borderWidth: 2,
+                  },
+                  !isChecked && !isCurrentDay && {
+                    borderColor: isFuture ? theme.disabled : theme.border,
+                    backgroundColor: isFuture ? 'transparent' : `${theme.border}60`,
+                  },
+                ]}
+              >
+                {isChecked && (
+                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                )}
+                {!isChecked && isCurrentDay && isLoading && (
+                  <View style={styles.loadingDot} />
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Hint de long press para editar */}
+      {onLongPress && (
+        <Text style={[styles.hint, { color: theme.disabled }]}>
+          Segure para editar
+        </Text>
+      )}
+    </TouchableOpacity>
   );
 };
 
@@ -118,47 +176,97 @@ const styles = StyleSheet.create({
   shadow: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
     elevation: 2,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.s,
+    marginBottom: spacing.xs,
   },
-  titleContainer: {
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
   emoji: {
-    fontSize: 32,
+    fontSize: 24,
+    marginRight: spacing.xs,
   },
   name: {
     ...typography.bodyLarge,
-    marginLeft: spacing.s,
+    fontWeight: '600',
     flex: 1,
   },
   streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     paddingHorizontal: spacing.xs,
     paddingVertical: spacing.xxs,
-    borderRadius: borderRadius.s,
+    borderRadius: borderRadius.full,
   },
   streakText: {
     ...typography.caption,
-    fontWeight: '500',
-    color: colors.accent.main,
+    fontWeight: '700',
   },
-  button: {
-    height: 44,
-    borderRadius: borderRadius.s,
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.s,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  progressLabel: {
+    ...typography.caption,
+    fontWeight: '500',
+    minWidth: 28,
+    textAlign: 'right',
+  },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dayColumn: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  dayLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+  },
+  dayBox: {
+    width: 32,
+    height: 32,
+    borderRadius: borderRadius.xs,
+    borderWidth: 1,
+    borderColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  buttonText: {
-    ...typography.body,
-    fontWeight: '500',
+  loadingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary.main,
+    opacity: 0.5,
+  },
+  hint: {
+    ...typography.caption,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    fontSize: 10,
   },
 });

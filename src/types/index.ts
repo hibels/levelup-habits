@@ -2,18 +2,29 @@ export interface Habit {
   id: string;
   name: string;
   emoji: string;
+  weeklyGoal: number; // quantos dias por semana (1–7)
   createdAt: string;
-  streak: number;
-  lastCompletedDate: string | null;
-  completedDates: string[]; // Array de dates no formato YYYY-MM-DD
+  streak: number; // semanas consecutivas atingindo a meta
+  lastStreakWeekKey: string | null; // "YYYY-Www" da última semana contada
+  completedDates: string[]; // YYYY-MM-DD
 }
 
 export interface UserProfile {
   name: string;
-  avatar: string; // Emoji
+  avatar: string; // emoji (fallback quando não há foto)
+  photoUri: string | null; // URI da foto de perfil
   level: number;
   xp: number;
   totalXP: number;
+}
+
+export interface WeeklyReview {
+  id: string;
+  weekKey: string; // "YYYY-Www"
+  wentWell: string;
+  toImprove: string;
+  habitResults: { habitId: string; completed: number; goal: number }[];
+  createdAt: string;
 }
 
 export interface LevelConfig {
@@ -24,8 +35,9 @@ export interface LevelConfig {
 
 export interface CheckResult {
   xpGained: number;
-  newLevel: number | null; // Null se não subiu de nível
+  newLevel: number | null;
   newStreak: number;
+  weekGoalReached: boolean;
 }
 
 export type ThemeMode = 'light' | 'dark';

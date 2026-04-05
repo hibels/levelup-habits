@@ -1,30 +1,35 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Habit, UserProfile, CheckResult, ThemeMode } from '../types';
-import { getTodayString, isToday, isYesterday } from '../utils/dates';
+import { Habit, UserProfile, CheckResult, ThemeMode, WeeklyReview } from '../types';
+import {
+  getTodayString,
+  getCurrentWeekKey,
+  getPreviousWeekKey,
+  getCurrentWeekDates,
+} from '../utils/dates';
 import {
   calculateLevel,
   XP_PER_HABIT_CHECK,
   getCurrentLevelXP,
-  getXPForCurrentLevel,
 } from '../utils/levels';
 
 interface AppState {
-  // State
   habits: Habit[];
   profile: UserProfile;
   themeMode: ThemeMode;
   isPremium: boolean;
   isLoading: boolean;
+  weeklyReviews: WeeklyReview[];
 
-  // Actions
   loadData: () => Promise<void>;
-  addHabit: (name: string, emoji: string) => Promise<void>;
-  editHabit: (id: string, name: string, emoji: string) => Promise<void>;
+  addHabit: (name: string, emoji: string, weeklyGoal: number) => Promise<void>;
+  editHabit: (id: string, name: string, emoji: string, weeklyGoal: number) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   checkHabit: (id: string) => Promise<CheckResult>;
+  uncheckHabit: (id: string) => Promise<void>;
   toggleTheme: () => void;
-  updateProfile: (name: string, avatar: string) => Promise<void>;
+  updateProfile: (name: string, avatar: string, photoUri?: string | null) => Promise<void>;
+  saveWeeklyReview: (review: Omit<WeeklyReview, 'id' | 'createdAt'>) => Promise<void>;
 }
 
 const STORAGE_KEYS = {
@@ -32,15 +37,41 @@ const STORAGE_KEYS = {
   PROFILE: '@levelup:profile',
   THEME: '@levelup:theme',
   PREMIUM: '@levelup:premium',
+  WEEKLY_REVIEWS: '@levelup:weeklyReviews',
 };
 
 const DEFAULT_PROFILE: UserProfile = {
-  name: 'Gusthawo',
+  name: 'Você',
   avatar: '🚀',
+  photoUri: null,
   level: 1,
   xp: 0,
   totalXP: 0,
 };
+
+/** Verifica e redefine o streak se a semana anterior não atingiu a meta */
+function recalcStreakOnLoad(habit: Habit): Habit {
+  if (!habit.lastStreakWeekKey) return habit;
+
+  const currentWeek = getCurrentWeekKey();
+  const previousWeek = getPreviousWeekKey();
+
+  // Se a última semana contada foi a atual ou a anterior, streak está válido
+  if (
+    habit.lastStreakWeekKey === currentWeek ||
+    habit.lastStreakWeekKey === previousWeek
+  ) {
+    return habit;
+  }
+
+  // Mais de uma semana sem atingir a meta → reset
+  return { ...habit, streak: 0, lastStreakWeekKey: null };
+}
+
+/** Conta quantas vezes um hábito foi completado em uma determinada semana (por datas) */
+function countCompletionsInWeek(habit: Habit, weekDates: string[]): number {
+  return habit.completedDates.filter(d => weekDates.includes(d)).length;
+}
 
 export const useStore = create<AppState>((set, get) => ({
   habits: [],
@@ -48,136 +79,126 @@ export const useStore = create<AppState>((set, get) => ({
   themeMode: 'light',
   isPremium: false,
   isLoading: true,
+  weeklyReviews: [],
 
   loadData: async () => {
     try {
-      const [habitsData, profileData, themeData, premiumData] = await Promise.all([
+      const [habitsData, profileData, themeData, premiumData, reviewsData] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.HABITS).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.PROFILE).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.THEME).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.PREMIUM).catch(() => null),
+        AsyncStorage.getItem(STORAGE_KEYS.WEEKLY_REVIEWS).catch(() => null),
       ]);
 
-      const habits: Habit[] = habitsData ? JSON.parse(habitsData) : [];
-      const profile: UserProfile = profileData ? JSON.parse(profileData) : DEFAULT_PROFILE;
+      const rawHabits: Habit[] = habitsData ? JSON.parse(habitsData) : [];
+      const profile: UserProfile = profileData
+        ? { ...DEFAULT_PROFILE, ...JSON.parse(profileData) }
+        : DEFAULT_PROFILE;
       const themeMode: ThemeMode = (themeData as ThemeMode) || 'light';
       const isPremium: boolean = premiumData === 'true';
+      const weeklyReviews: WeeklyReview[] = reviewsData ? JSON.parse(reviewsData) : [];
 
-      // Resetar streaks se necessário
-      const updatedHabits = habits.map(habit => {
-        if (!habit.lastCompletedDate) return habit;
-
-        const isCompletedToday = isToday(habit.lastCompletedDate);
-        const wasCompletedYesterday = isYesterday(habit.lastCompletedDate);
-
-        // Se não completou hoje nem ontem, reseta o streak
-        if (!isCompletedToday && !wasCompletedYesterday) {
-          return { ...habit, streak: 0 };
-        }
-
-        return habit;
+      // Migra hábitos antigos (sem weeklyGoal / lastStreakWeekKey) e recalcula streak
+      const habits = rawHabits.map(h => {
+        const migrated: Habit = {
+          ...h,
+          weeklyGoal: h.weeklyGoal ?? 7,
+          lastStreakWeekKey: h.lastStreakWeekKey ?? null,
+        };
+        return recalcStreakOnLoad(migrated);
       });
 
-      set({
-        habits: updatedHabits,
-        profile,
-        themeMode,
-        isPremium,
-        isLoading: false,
-      });
+      set({ habits, profile, themeMode, isPremium, isLoading: false, weeklyReviews });
 
-      // Salva os hábitos atualizados se houve mudança
-      if (JSON.stringify(habits) !== JSON.stringify(updatedHabits)) {
-        await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(updatedHabits)).catch(() => {
-          console.log('Could not save updated habits');
-        });
+      // Persiste se houve mudança por migração/streak reset
+      if (JSON.stringify(rawHabits) !== JSON.stringify(habits)) {
+        await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch(() => {});
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
-      // Set default values even if storage fails
+    } catch {
       set({
         habits: [],
         profile: DEFAULT_PROFILE,
         themeMode: 'light',
         isPremium: false,
         isLoading: false,
+        weeklyReviews: [],
       });
     }
   },
 
-  addHabit: async (name: string, emoji: string) => {
+  addHabit: async (name, emoji, weeklyGoal) => {
     const newHabit: Habit = {
       id: Date.now().toString(),
       name,
       emoji,
+      weeklyGoal,
       createdAt: new Date().toISOString(),
       streak: 0,
-      lastCompletedDate: null,
+      lastStreakWeekKey: null,
       completedDates: [],
     };
-
     const habits = [...get().habits, newHabit];
     set({ habits });
-    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch((error) => {
-      console.error('Failed to save habit:', error);
-    });
+    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch(() => {});
   },
 
-  editHabit: async (id: string, name: string, emoji: string) => {
-    const habits = get().habits.map(habit =>
-      habit.id === id ? { ...habit, name, emoji } : habit
+  editHabit: async (id, name, emoji, weeklyGoal) => {
+    const habits = get().habits.map(h =>
+      h.id === id ? { ...h, name, emoji, weeklyGoal } : h
     );
     set({ habits });
-    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch((error) => {
-      console.error('Failed to update habit:', error);
-    });
+    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch(() => {});
   },
 
-  deleteHabit: async (id: string) => {
-    const habits = get().habits.filter(habit => habit.id !== id);
+  deleteHabit: async (id) => {
+    const habits = get().habits.filter(h => h.id !== id);
     set({ habits });
-    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch((error) => {
-      console.error('Failed to delete habit:', error);
-    });
+    await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch(() => {});
   },
 
-  checkHabit: async (id: string): Promise<CheckResult> => {
+  checkHabit: async (id): Promise<CheckResult> => {
     const today = getTodayString();
     const { habits, profile } = get();
     const habit = habits.find(h => h.id === id);
 
-    if (!habit) {
-      throw new Error('Habit not found');
+    if (!habit) throw new Error('Habit not found');
+    if (habit.completedDates.includes(today)) throw new Error('Already completed today');
+
+    const weekDates = getCurrentWeekDates();
+    const completionsBeforeToday = countCompletionsInWeek(habit, weekDates);
+    const completionsAfterToday = completionsBeforeToday + 1;
+
+    // Calcula streak semanal: atingiu a meta esta semana?
+    const currentWeek = getCurrentWeekKey();
+    const previousWeek = getPreviousWeekKey();
+    let newStreak = habit.streak;
+    let newLastStreakWeekKey = habit.lastStreakWeekKey;
+    let weekGoalReached = false;
+
+    if (completionsAfterToday === habit.weeklyGoal) {
+      weekGoalReached = true;
+      if (habit.lastStreakWeekKey === previousWeek) {
+        newStreak = habit.streak + 1;
+      } else {
+        newStreak = 1;
+      }
+      newLastStreakWeekKey = currentWeek;
     }
 
-    // Verifica se já foi completado hoje
-    if (habit.completedDates.includes(today)) {
-      throw new Error('Already completed today');
-    }
-
-    // Calcula novo streak
-    const wasCompletedYesterday = habit.lastCompletedDate
-      ? isYesterday(habit.lastCompletedDate)
-      : false;
-    const newStreak = wasCompletedYesterday ? habit.streak + 1 : 1;
-
-    // Atualiza hábito
     const updatedHabit: Habit = {
       ...habit,
       streak: newStreak,
-      lastCompletedDate: today,
+      lastStreakWeekKey: newLastStreakWeekKey,
       completedDates: [...habit.completedDates, today],
     };
 
-    // Calcula XP
+    // XP e level
     const newTotalXP = profile.totalXP + XP_PER_HABIT_CHECK;
     const oldLevel = profile.level;
     const newLevel = calculateLevel(newTotalXP);
     const leveledUp = newLevel > oldLevel;
-
-    // Calcula XP atual para a barra de progresso
     const currentXP = getCurrentLevelXP(newTotalXP);
-    const xpForLevel = getXPForCurrentLevel(newTotalXP);
 
     const updatedProfile: UserProfile = {
       ...profile,
@@ -187,32 +208,91 @@ export const useStore = create<AppState>((set, get) => ({
     };
 
     const updatedHabits = habits.map(h => (h.id === id ? updatedHabit : h));
-
     set({ habits: updatedHabits, profile: updatedProfile });
 
     await Promise.all([
-      AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(updatedHabits)).catch(() => { }),
-      AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updatedProfile)).catch(() => { }),
+      AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(updatedHabits)).catch(() => {}),
+      AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updatedProfile)).catch(() => {}),
     ]);
 
     return {
       xpGained: XP_PER_HABIT_CHECK,
       newLevel: leveledUp ? newLevel : null,
       newStreak,
+      weekGoalReached,
     };
+  },
+
+  uncheckHabit: async (id) => {
+    const today = getTodayString();
+    const { habits, profile } = get();
+    const habit = habits.find(h => h.id === id);
+    if (!habit || !habit.completedDates.includes(today)) return;
+
+    const weekDates = getCurrentWeekDates();
+    const completionsAfterUncheck = countCompletionsInWeek(
+      { ...habit, completedDates: habit.completedDates.filter(d => d !== today) },
+      weekDates
+    );
+
+    // Se a meta semanal estava atingida e agora não está mais, reverte o streak
+    const currentWeek = getCurrentWeekKey();
+    let newStreak = habit.streak;
+    let newLastStreakWeekKey = habit.lastStreakWeekKey;
+
+    if (
+      habit.lastStreakWeekKey === currentWeek &&
+      completionsAfterUncheck < habit.weeklyGoal
+    ) {
+      newStreak = Math.max(0, habit.streak - 1);
+      newLastStreakWeekKey = newStreak > 0 ? getPreviousWeekKey() : null;
+    }
+
+    const updatedHabit: Habit = {
+      ...habit,
+      streak: newStreak,
+      lastStreakWeekKey: newLastStreakWeekKey,
+      completedDates: habit.completedDates.filter(d => d !== today),
+    };
+
+    // Remove o XP ganho ao marcar
+    const newTotalXP = Math.max(0, profile.totalXP - XP_PER_HABIT_CHECK);
+    const newLevel = calculateLevel(newTotalXP);
+    const updatedProfile: UserProfile = {
+      ...profile,
+      totalXP: newTotalXP,
+      level: newLevel,
+      xp: getCurrentLevelXP(newTotalXP),
+    };
+
+    const updatedHabits = habits.map(h => (h.id === id ? updatedHabit : h));
+    set({ habits: updatedHabits, profile: updatedProfile });
+    await Promise.all([
+      AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(updatedHabits)).catch(() => {}),
+      AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updatedProfile)).catch(() => {}),
+    ]);
   },
 
   toggleTheme: () => {
     const newTheme = get().themeMode === 'light' ? 'dark' : 'light';
     set({ themeMode: newTheme });
-    AsyncStorage.setItem(STORAGE_KEYS.THEME, newTheme).catch(() => { });
+    AsyncStorage.setItem(STORAGE_KEYS.THEME, newTheme).catch(() => {});
   },
 
-  updateProfile: async (name: string, avatar: string) => {
-    const profile = { ...get().profile, name, avatar };
+  updateProfile: async (name, avatar, photoUri = null) => {
+    const profile = { ...get().profile, name, avatar, photoUri };
     set({ profile });
-    await AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile)).catch((error) => {
-      console.error('Failed to update profile:', error);
-    });
+    await AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile)).catch(() => {});
+  },
+
+  saveWeeklyReview: async (reviewData) => {
+    const review: WeeklyReview = {
+      ...reviewData,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    const weeklyReviews = [review, ...get().weeklyReviews];
+    set({ weeklyReviews });
+    await AsyncStorage.setItem(STORAGE_KEYS.WEEKLY_REVIEWS, JSON.stringify(weeklyReviews)).catch(() => {});
   },
 }));

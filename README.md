@@ -1,184 +1,254 @@
-# LevelUp Habits 🚀
+# LevelUp Habits
 
-Um aplicativo de rastreamento de hábitos gamificado que transforma sua rotina em uma jornada épica de progresso pessoal.
+Um app de rastreamento de hábitos com mecânicas de gamificação. A ideia é simples: construa consistência, ganhe XP, suba de nível.
 
-## 📱 Sobre o Projeto
+---
 
-LevelUp Habits é um app mobile desenvolvido em React Native que ajuda você a construir e manter hábitos consistentes através de mecânicas de gamificação:
+## Sobre o Projeto
 
-- **Sistema de XP e Níveis**: Ganhe experiência a cada hábito completado
-- **Streaks**: Mantenha sequências diárias e desbloqueie conquistas
-- **Dark Mode**: Interface adaptável para uso em qualquer hora do dia
-- **Offline-First**: Funciona perfeitamente sem conexão com internet
+LevelUp Habits é um app mobile em React Native (Expo) focado em ajudar o usuário a criar e manter hábitos de forma leve e visual. O design é intencionalmente simples — quanto menos fricção, maior a chance de uso diário.
 
-## ✨ Funcionalidades
+Referência de produto: Duolingo (streaks, XP, progressão de nível aplicados a hábitos pessoais).
 
-### MVP (Versão Atual)
+---
 
-- ✅ Criar, editar e excluir hábitos personalizados
-- ✅ Sistema de check diário com animações
-- ✅ Sistema de XP e progressão de níveis
-- ✅ Contador de streaks com reset automático
-- ✅ Limite de 3 hábitos gratuitos (com paywall para premium)
-- ✅ Tela de perfil com estatísticas
-- ✅ Persistência local com AsyncStorage
-- ✅ Suporte a tema claro/escuro
+## Funcionalidades
 
-## 🛠️ Stack Tecnológica
+### Grátis (sempre)
 
-- **Framework**: React Native (Expo)
-- **Linguagem**: TypeScript (strict mode)
-- **Navegação**: React Navigation 6
-- **State Management**: Zustand
-- **Validação**: React Hook Form + Zod
-- **Persistência**: AsyncStorage
-- **Animações**: Lottie
-- **Testes**: Jest + React Native Testing Library
+- Criar até **3 hábitos**
+- Definir **meta semanal** por hábito (de 1× até todos os dias)
+- **Checkboxes visuais** dos 7 dias da semana em cada hábito
+- **Marcar e desmarcar** o hábito do dia corrente
+- **Sistema de XP**: +10 XP por check, -10 XP ao desmarcar
+- **Streak semanal**: contador de semanas consecutivas com a meta atingida
+- **Barra de progresso** da meta semanal por hábito
+- **Tela de perfil** com foto real, nível, XP e calendário mensal de atividade (estilo GitHub contributions)
+- **Retrospectiva semanal**: escrever o que foi bom e o que melhorar a cada semana
+- **Frases motivacionais** diárias na tela principal
+- Suporte a **tema claro e escuro**
+- Funciona **offline** (dados salvos localmente com AsyncStorage)
 
-## 🚀 Como Rodar o Projeto
+### Premium (pago)
+
+- Hábitos **ilimitados** (acima de 3)
+- **Dashboard semanal completo** com visão detalhada por hábito
+- **Retrospectiva semanal ilimitada** (no plano gratuito, futuramente será limitada)
+- **Histórico de streaks completo**
+
+> Planos: R$ 8,90/mês ou R$ 59,90/ano (aprox. R$ 4,99/mês).
+> A integração com pagamento real ainda não está implementada — apenas a UI do paywall está pronta.
+
+---
+
+## Stack Tecnológica
+
+| Camada | Tecnologia |
+|---|---|
+| Framework | React Native (Expo ~55) |
+| Linguagem | TypeScript 5 (strict) |
+| Navegação | React Navigation 6 |
+| State | Zustand 5 |
+| Formulários | React Hook Form + Zod |
+| Storage | AsyncStorage |
+| Ícones | @expo/vector-icons (Ionicons / MaterialCommunityIcons) |
+| Foto de perfil | expo-image-picker |
+| Testes | Jest + React Native Testing Library |
+
+---
+
+## Como Rodar
 
 ### Pré-requisitos
 
-- Node.js 18+ instalado
-- npm ou yarn
+- Node.js 18+
 - Expo CLI
-- Expo Go app no seu celular (iOS/Android)
+- Expo Go no celular (iOS ou Android)
 
 ### Instalação
 
 ```bash
-# Clone o repositório
 git clone <repository-url>
 cd levelup-habits
-
-# Instale as dependências
 npm install
-
-# Inicie o projeto
 npm start
 ```
 
-### Executando
+Escaneie o QR code com o Expo Go para rodar no celular.
+
+### Outros comandos
 
 ```bash
-# Iniciar no Android
-npm run android
-
-# Iniciar no iOS (requer macOS)
-npm run ios
-
-# Iniciar no navegador
-npm run web
+npm run android       # emulador Android
+npm run ios           # simulador iOS (requer macOS)
+npm run web           # navegador
+npm test              # testes unitários
+npm run test:coverage # coverage report
+npm run lint          # ESLint
+npm run format        # Prettier
 ```
-
-### Usando o Expo Go
-
-1. Instale o app Expo Go no seu celular
-2. Execute `npm start`
-3. Escaneie o QR code com a câmera (iOS) ou Expo Go (Android)
-
-## 🧪 Testes
-
-```bash
-# Rodar todos os testes
-npm test
-
-# Rodar em modo watch
-npm run test:watch
-
-# Gerar relatório de coverage
-npm run test:coverage
-```
-
-**Coverage Atual**: 70%+ (conforme requisitos)
-
-## 📁 Estrutura do Projeto
-
-```
-src/
-├── components/       # Componentes reutilizáveis
-│   ├── HabitCard.tsx
-│   ├── ProfileHeader.tsx
-│   ├── EmptyState.tsx
-│   └── FAB.tsx
-├── screens/          # Telas do app
-│   ├── HomeScreen.tsx
-│   ├── EditHabitScreen.tsx
-│   ├── ProfileScreen.tsx
-│   └── PaywallScreen.tsx
-├── navigation/       # Configuração de navegação
-│   └── index.tsx
-├── store/            # Zustand store
-│   └── index.ts
-├── utils/            # Funções utilitárias
-│   ├── levels.ts
-│   ├── dates.ts
-│   └── validators.ts
-├── types/            # TypeScript types
-│   └── index.ts
-└── theme/            # Design system (cores, tipografia, etc)
-    └── index.ts
-```
-
-## 🎨 Design System
-
-O app segue rigorosamente as especificações de design documentadas em `levelup-habits-design-specs.md`:
-
-- **Cores**: Sistema de cores completo para light/dark mode
-- **Tipografia**: Hierarquia clara com Inter/SF Pro/Roboto
-- **Espaçamento**: Grid de 8pt para consistência
-- **Componentes**: Todos os componentes seguem as specs visuais
-
-## 📝 Convenções de Commit
-
-Este projeto usa [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-feat: adiciona nova funcionalidade
-fix: corrige um bug
-docs: atualiza documentação
-style: mudanças de formatação
-refactor: refatoração de código
-test: adiciona ou modifica testes
-chore: tarefas de manutenção
-```
-
-## 🚧 Roadmap
-
-### Futuras Implementações
-
-- [ ] Backend/API real
-- [ ] Autenticação de usuários
-- [ ] Pagamento in-app real
-- [ ] Ranking online entre usuários
-- [ ] Notificações push
-- [ ] Temas personalizados (premium)
-- [ ] Backup em nuvem
-- [ ] Estatísticas avançadas
-- [ ] Conquistas e badges
-
-## 🐛 Bugs Conhecidos
-
-Nenhum bug crítico conhecido no momento.
-
-## 📄 Licença
-
-Este projeto é privado e de uso interno.
-
-## 👥 Autores
-
-- **Mobile Developer** - Implementação do MVP
-- **Product Owner** - Especificações e requisitos
-- **Designer** - Design System e UI/UX
-
-## 🙏 Agradecimentos
-
-- Equipe Clawdbot pela oportunidade
-- Comunidade React Native
-- Expo team
 
 ---
 
-**Versão**: 1.0.0  
-**Data**: 2026-03-24  
-**Status**: MVP Completo ✅
+## Estrutura do Projeto
+
+```
+src/
+├── components/
+│   ├── HabitCard.tsx         # Card com checkboxes semanais
+│   ├── ProfileHeader.tsx     # Header compacto com XP bar
+│   ├── EmptyState.tsx        # Estado vazio na Home
+│   ├── FAB.tsx               # Botão flutuante de adicionar
+│   └── MotivationalMessage.tsx # Frase motivacional diária
+├── screens/
+│   ├── HomeScreen.tsx        # Lista de hábitos + frase + acesso ao review
+│   ├── EditHabitScreen.tsx   # Criar / editar hábito (nome, emoji, meta semanal)
+│   ├── ProfileScreen.tsx     # Perfil, stats, calendário mensal
+│   ├── PaywallScreen.tsx     # Tela de upgrade premium
+│   └── WeeklyReviewScreen.tsx# Retrospectiva semanal
+├── navigation/
+│   └── index.tsx             # Stack + Bottom Tabs
+├── store/
+│   └── index.ts              # Zustand store (hábitos, perfil, reviews, tema)
+├── utils/
+│   ├── levels.ts             # XP, níveis, títulos
+│   ├── dates.ts              # Datas, semanas ISO, calendário
+│   └── validators.ts         # Validação de formulários (Zod)
+├── types/
+│   └── index.ts              # Habit, UserProfile, WeeklyReview, etc.
+└── theme/
+    └── index.ts              # Cores, tipografia, espaçamento, sombras
+```
+
+---
+
+## Arquitetura
+
+### State Management
+
+Um único store Zustand em `src/store/index.ts` gerencia todo o estado do app. Não existe estado global fora dele — componentes e telas consomem o store diretamente via `useStore()`.
+
+Persistência é feita via AsyncStorage com chaves prefixadas `@levelup:*`. O carregamento inicial (`loadData`) também faz migração de dados antigos e recalcula streaks.
+
+### Navegação
+
+Estrutura em dois níveis:
+
+```
+RootNavigator (Stack)
+├── MainTabs (Bottom Tabs)
+│   ├── HomeScreen
+│   └── ProfileScreen
+├── EditHabitScreen   → modal
+├── PaywallScreen     → modal (sem header)
+└── WeeklyReviewScreen → modal (sem header)
+```
+
+Telas que pertencem a uma aba mas precisam navegar para modais do stack raiz usam `CompositeScreenProps`. Os tipos de rota ficam em `src/navigation/index.tsx`.
+
+### Fluxo de dados
+
+```
+AsyncStorage → loadData() → Zustand store → componentes/telas
+                                  ↑
+              actions (checkHabit, addHabit, etc.) persistem de volta
+```
+
+---
+
+## Padrões de Código
+
+### Tema
+
+Nunca use cores ou tamanhos hardcoded. Todo valor visual vem do design system em `src/theme/index.ts`:
+
+```ts
+import { colors, spacing, typography, borderRadius, shadows } from '../theme';
+
+// Em componentes com suporte a dark mode:
+const theme = isDarkMode ? colors.dark : colors.light;
+// Use: theme.background, theme.card, theme.border, theme.textPrimary, theme.textSecondary
+// Cores de marca: colors.primary.main, colors.secondary.main, colors.accent.main
+// Semânticas: colors.semantic.success / error / warning / info
+```
+
+O espaçamento segue um grid de 8pt: `spacing.xxs(4)` → `spacing.xs(8)` → `spacing.s(12)` → `spacing.m(16)` → `spacing.l(24)` → `spacing.xl(32)` → `spacing.xxl(48)` → `spacing.xxxl(64)`.
+
+### Ícones
+
+Use sempre `@expo/vector-icons`. Preferência por `Ionicons`; `MaterialCommunityIcons` para variações específicas. Emojis são aceitos apenas como avatar do usuário e no campo `habit.emoji` — nunca como ícones de UI.
+
+```ts
+import { Ionicons } from '@expo/vector-icons';
+<Ionicons name="checkmark-circle" size={20} color={colors.primary.main} />
+```
+
+### Datas
+
+Use exclusivamente as funções de `src/utils/dates.ts`. Nunca construa strings de data manualmente nem use `new Date().toISOString().split('T')[0]` espalhado pelo código.
+
+Funções principais: `getTodayString()`, `getCurrentWeekDates()`, `getCurrentWeekKey()`, `getWeekKey(date)`, `getMonthDates(year, month)`.
+
+### Componentes
+
+- Recebem `isDarkMode: boolean` e derivam `theme` localmente
+- Estilos ficam em `StyleSheet.create()` no mesmo arquivo, abaixo do componente
+- Valores dinâmicos (cores, opacidade) são aplicados inline via array de estilos
+
+---
+
+## Modelo de Gamificação
+
+### XP e Níveis
+
+Cada check de hábito concede **+10 XP**. Desmarcar remove **-10 XP**. Os níveis são:
+
+| Nível | XP necessário | Título |
+|---|---|---|
+| 1 | 0 | Iniciante |
+| 2 | 100 | Aprendiz |
+| 3 | 250 | Dedicado |
+| 4 | 500 | Persistente |
+| 5 | 1.000 | Determinado |
+| 6 | 1.500 | Focado |
+| 7 | 2.100 | Disciplinado |
+| 8 | 2.800 | Mestre |
+| 9 | 3.600 | Lendário |
+| 10 | 5.000 | Imortal |
+
+### Streak Semanal
+
+O streak conta **semanas consecutivas** em que o usuário atingiu a meta do hábito (ex: se a meta é 3×/semana, completar 3 ou mais dias naquela semana conta como +1 streak). Se uma semana inteira passa sem atingir a meta, o streak é resetado para 0.
+
+---
+
+## Roadmap
+
+- [ ] Backend + autenticação de usuários
+- [ ] Pagamento in-app real (RevenueCat ou similar)
+- [ ] Notificações push (lembrete diário e sugestão de review no fim de semana)
+- [ ] Ranking online entre usuários
+- [ ] Backup em nuvem
+- [ ] Temas visuais personalizados (premium)
+- [ ] Mais opções de ícone além de emojis
+
+---
+
+## Convenções de Commit
+
+Este projeto segue [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat:     nova funcionalidade
+fix:      correção de bug
+docs:     documentação
+style:    formatação
+refactor: refatoração sem mudança de comportamento
+test:     testes
+chore:    manutenção
+```
+
+---
+
+**Versão**: 1.1.0
+**Status**: MVP completo, em evolução

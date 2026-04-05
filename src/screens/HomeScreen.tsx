@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
 import { ProfileHeader } from '../components/ProfileHeader';
 import { HabitCard } from '../components/HabitCard';
 import { EmptyState } from '../components/EmptyState';
 import { FAB } from '../components/FAB';
-import { colors, spacing } from '../theme';
+import { MotivationalMessage } from '../components/MotivationalMessage';
+import { colors, spacing, typography, borderRadius } from '../theme';
 import { MAX_FREE_HABITS } from '../utils/levels';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -19,7 +21,6 @@ type Props = CompositeScreenProps<
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { habits, profile, themeMode, isPremium } = useStore();
-  const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
 
   const isDarkMode = themeMode === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
@@ -33,28 +34,32 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     navigation.navigate('EditHabit', { habitId: undefined });
   };
 
-  const handleCheckComplete = (xpGained: number, newLevel: number | null, newStreak: number) => {
-    // Aqui você pode adicionar animações de confete, XP flutuante, etc.
-    if (newLevel) {
-      setShowLevelUp(newLevel);
-      setTimeout(() => {
-        Alert.alert(
-          '⭐ Level Up! 🎉',
-          `Você alcançou o Nível ${newLevel}!`,
-          [{ text: 'Continuar', onPress: () => setShowLevelUp(null) }]
-        );
-      }, 500);
-    }
+  const handleEditHabit = (habitId: string) => {
+    navigation.navigate('EditHabit', { habitId });
+  };
 
-    // Streak milestone
-    if (newStreak === 7 || newStreak === 30 || newStreak === 100) {
+  const handleCheckComplete = (
+    xpGained: number,
+    newLevel: number | null,
+    newStreak: number,
+    weekGoalReached: boolean
+  ) => {
+    if (newLevel) {
       setTimeout(() => {
         Alert.alert(
-          '🔥 Streak Incrível!',
-          `${newStreak} dias de sequência! Continue assim!`,
-          [{ text: 'OK' }]
+          'Level Up!',
+          `Você alcançou o Nível ${newLevel}!`,
+          [{ text: 'Continuar' }]
         );
-      }, 1000);
+      }, 300);
+    } else if (weekGoalReached) {
+      setTimeout(() => {
+        Alert.alert(
+          'Meta semanal atingida!',
+          `Você completou sua meta desta semana. Continue assim!`,
+          [{ text: 'Incrível!' }]
+        );
+      }, 300);
     }
   };
 
@@ -67,6 +72,24 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Frase motivacional */}
+        {habits.length > 0 && <MotivationalMessage isDarkMode={isDarkMode} />}
+
+        {/* Banner de review semanal */}
+        {habits.length > 0 && (
+          <TouchableOpacity
+            style={[styles.reviewBanner, { backgroundColor: `${colors.primary.main}12`, borderColor: `${colors.primary.main}30` }]}
+            onPress={() => navigation.navigate('WeeklyReview')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="journal-outline" size={18} color={colors.primary.main} />
+            <Text style={[styles.reviewBannerText, { color: colors.primary.dark }]}>
+              Retrospectiva semanal
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.primary.main} />
+          </TouchableOpacity>
+        )}
+
         {habits.length === 0 ? (
           <EmptyState isDarkMode={isDarkMode} onAddHabit={handleAddHabit} />
         ) : (
@@ -76,6 +99,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 key={habit.id}
                 habit={habit}
                 isDarkMode={isDarkMode}
+                onLongPress={() => handleEditHabit(habit.id)}
                 onCheckComplete={handleCheckComplete}
               />
             ))}
@@ -92,16 +116,24 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1 },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingTop: spacing.s },
+  reviewBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.m,
+    marginBottom: spacing.s,
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.s,
+    borderRadius: borderRadius.m,
+    borderWidth: 1,
+    gap: spacing.xs,
+  },
+  reviewBannerText: {
+    ...typography.body,
+    fontWeight: '600',
     flex: 1,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: spacing.m,
-  },
-  bottomPadding: {
-    height: 100, // Espaço para o FAB
-  },
+  bottomPadding: { height: 100 },
 });

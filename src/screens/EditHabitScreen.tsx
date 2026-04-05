@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -22,15 +23,19 @@ const EMOJI_OPTIONS = [
   '🌟', '🔥', '⚡', '🚀', '🎮',
 ];
 
+const WEEKLY_GOAL_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
+const WEEKDAY_SHORT = ['1×', '2×', '3×', '4×', '5×', '6×', 'Todo dia'];
+
 export const EditHabitScreen: React.FC<Props> = ({ route, navigation }) => {
   const { habitId } = route.params;
   const { habits, addHabit, editHabit, deleteHabit, themeMode } = useStore();
-  
+
   const habit = habitId ? habits.find(h => h.id === habitId) : null;
   const isEditing = !!habit;
 
   const [name, setName] = useState(habit?.name || '');
   const [selectedEmoji, setSelectedEmoji] = useState(habit?.emoji || '');
+  const [weeklyGoal, setWeeklyGoal] = useState(habit?.weeklyGoal ?? 7);
   const [nameError, setNameError] = useState('');
 
   const isDarkMode = themeMode === 'dark';
@@ -40,7 +45,7 @@ export const EditHabitScreen: React.FC<Props> = ({ route, navigation }) => {
     navigation.setOptions({
       title: isEditing ? 'Editar Hábito' : 'Novo Hábito',
     });
-  }, [isEditing]);
+  }, [isEditing, navigation]);
 
   const validateName = (value: string) => {
     if (value.length < 2) {
@@ -58,18 +63,18 @@ export const EditHabitScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleSave = async () => {
     if (!validateName(name)) return;
     if (!selectedEmoji) {
-      Alert.alert('Erro', 'Escolha um emoji');
+      Alert.alert('Atenção', 'Escolha um emoji para o hábito');
       return;
     }
 
     try {
       if (isEditing && habitId) {
-        await editHabit(habitId, name, selectedEmoji);
+        await editHabit(habitId, name, selectedEmoji, weeklyGoal);
       } else {
-        await addHabit(name, selectedEmoji);
+        await addHabit(name, selectedEmoji, weeklyGoal);
       }
       navigation.goBack();
-    } catch (error) {
+    } catch {
       Alert.alert('Erro', 'Não foi possível salvar o hábito');
     }
   };
@@ -79,7 +84,7 @@ export const EditHabitScreen: React.FC<Props> = ({ route, navigation }) => {
 
     Alert.alert(
       'Excluir Hábito',
-      'Tem certeza que deseja excluir este hábito? Esta ação não pode ser desfeita.',
+      'Tem certeza? Esta ação não pode ser desfeita.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -101,6 +106,7 @@ export const EditHabitScreen: React.FC<Props> = ({ route, navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
       contentContainerStyle={styles.content}
     >
+      {/* Nome */}
       <View style={styles.section}>
         <Text style={[styles.label, { color: theme.textSecondary }]}>Nome do Hábito</Text>
         <TextInput
@@ -112,7 +118,7 @@ export const EditHabitScreen: React.FC<Props> = ({ route, navigation }) => {
               color: theme.textPrimary,
             },
           ]}
-          placeholder="Ex: Meditar, Ler, Exercitar"
+          placeholder="Ex: Meditar, Ler, Exercitar..."
           placeholderTextColor={theme.textSecondary}
           value={name}
           onChangeText={value => {
@@ -126,8 +132,49 @@ export const EditHabitScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : null}
       </View>
 
+      {/* Meta semanal */}
       <View style={styles.section}>
-        <Text style={[styles.label, { color: theme.textSecondary }]}>Escolha um emoji</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>
+          Meta semanal
+        </Text>
+        <Text style={[styles.goalHint, { color: theme.textSecondary }]}>
+          Quantas vezes por semana você quer fazer este hábito?
+        </Text>
+        <View style={styles.goalRow}>
+          {WEEKLY_GOAL_OPTIONS.map((days, index) => {
+            const isSelected = weeklyGoal === days;
+            return (
+              <TouchableOpacity
+                key={days}
+                style={[
+                  styles.goalOption,
+                  {
+                    backgroundColor: isSelected
+                      ? colors.primary.main
+                      : theme.surface,
+                    borderColor: isSelected ? colors.primary.main : theme.border,
+                  },
+                ]}
+                onPress={() => setWeeklyGoal(days)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.goalOptionText,
+                    { color: isSelected ? '#FFFFFF' : theme.textSecondary },
+                  ]}
+                >
+                  {WEEKDAY_SHORT[index]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Emoji */}
+      <View style={styles.section}>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>Ícone</Text>
         <View style={styles.emojiGrid}>
           {EMOJI_OPTIONS.map(emoji => (
             <TouchableOpacity
@@ -136,7 +183,7 @@ export const EditHabitScreen: React.FC<Props> = ({ route, navigation }) => {
                 styles.emojiCell,
                 {
                   backgroundColor: selectedEmoji === emoji
-                    ? `${colors.primary.main}1A`
+                    ? `${colors.primary.main}18`
                     : theme.surface,
                   borderColor: selectedEmoji === emoji
                     ? colors.primary.main
@@ -146,21 +193,20 @@ export const EditHabitScreen: React.FC<Props> = ({ route, navigation }) => {
               onPress={() => setSelectedEmoji(emoji)}
               activeOpacity={0.7}
             >
-              <Text style={styles.emoji}>{emoji}</Text>
+              <Text style={styles.emojiText}>{emoji}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
+      {/* Salvar */}
       <TouchableOpacity
-        style={[
-          styles.saveButton,
-          { opacity: canSave ? 1 : 0.5 },
-        ]}
+        style={[styles.saveButton, { opacity: canSave ? 1 : 0.4 }]}
         onPress={handleSave}
         disabled={!canSave}
         activeOpacity={0.8}
       >
+        <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
         <Text style={styles.saveButtonText}>Salvar</Text>
       </TouchableOpacity>
 
@@ -173,11 +219,8 @@ export const EditHabitScreen: React.FC<Props> = ({ route, navigation }) => {
       </TouchableOpacity>
 
       {isEditing && (
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={handleDelete}
-          activeOpacity={0.8}
-        >
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} activeOpacity={0.8}>
+          <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
           <Text style={styles.deleteButtonText}>Excluir Hábito</Text>
         </TouchableOpacity>
       )}
@@ -191,13 +234,14 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.m,
+    paddingBottom: spacing.xxxl,
   },
   section: {
     marginBottom: spacing.l,
   },
   label: {
     ...typography.body,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: spacing.xs,
   },
   input: {
@@ -212,28 +256,51 @@ const styles = StyleSheet.create({
     color: colors.semantic.error,
     marginTop: spacing.xxs,
   },
+  goalHint: {
+    ...typography.caption,
+    marginBottom: spacing.s,
+  },
+  goalRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  goalOption: {
+    paddingHorizontal: spacing.s,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.s,
+    borderWidth: 1,
+    minWidth: 52,
+    alignItems: 'center',
+  },
+  goalOptionText: {
+    ...typography.caption,
+    fontWeight: '600',
+  },
   emojiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.s,
   },
   emojiCell: {
-    width: 56,
-    height: 56,
+    width: 52,
+    height: 52,
     borderWidth: 2,
     borderRadius: borderRadius.s,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emoji: {
-    fontSize: 32,
+  emojiText: {
+    fontSize: 28,
   },
   saveButton: {
+    flexDirection: 'row',
     height: 48,
     backgroundColor: colors.primary.main,
     borderRadius: borderRadius.s,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: spacing.xs,
     marginTop: spacing.xl,
   },
   saveButtonText: {
@@ -243,7 +310,6 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     height: 48,
-    backgroundColor: 'transparent',
     borderWidth: 1,
     borderRadius: borderRadius.s,
     justifyContent: 'center',
@@ -254,11 +320,13 @@ const styles = StyleSheet.create({
     ...typography.bodyLarge,
   },
   deleteButton: {
+    flexDirection: 'row',
     height: 48,
     backgroundColor: colors.semantic.error,
     borderRadius: borderRadius.s,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: spacing.xs,
     marginTop: spacing.xl,
   },
   deleteButtonText: {
