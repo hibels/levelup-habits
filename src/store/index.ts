@@ -11,6 +11,7 @@ import {
   calculateLevel,
   XP_PER_HABIT_CHECK,
   getCurrentLevelXP,
+  MAX_FREE_HABITS,
 } from '../utils/levels';
 
 interface AppState {
@@ -20,6 +21,8 @@ interface AppState {
   isPremium: boolean;
   isLoading: boolean;
   weeklyReviews: WeeklyReview[];
+  hasOnboarded: boolean;
+  notificationsEnabled: boolean;
 
   loadData: () => Promise<void>;
   addHabit: (name: string, emoji: string, weeklyGoal: number) => Promise<void>;
@@ -30,6 +33,7 @@ interface AppState {
   toggleTheme: () => void;
   updateProfile: (name: string, avatar: string, photoUri?: string | null) => Promise<void>;
   saveWeeklyReview: (review: Omit<WeeklyReview, 'id' | 'createdAt'>) => Promise<void>;
+  completeOnboarding: (name: string, avatar: string, notificationsEnabled: boolean) => Promise<void>;
 }
 
 const STORAGE_KEYS = {
@@ -38,6 +42,8 @@ const STORAGE_KEYS = {
   THEME: '@levelup:theme',
   PREMIUM: '@levelup:premium',
   WEEKLY_REVIEWS: '@levelup:weeklyReviews',
+  ONBOARDED: '@levelup:onboarded',
+  NOTIFICATIONS: '@levelup:notifications',
 };
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -80,15 +86,19 @@ export const useStore = create<AppState>((set, get) => ({
   isPremium: false,
   isLoading: true,
   weeklyReviews: [],
+  hasOnboarded: false,
+  notificationsEnabled: false,
 
   loadData: async () => {
     try {
-      const [habitsData, profileData, themeData, premiumData, reviewsData] = await Promise.all([
+      const [habitsData, profileData, themeData, premiumData, reviewsData, onboardedData, notificationsData] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.HABITS).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.PROFILE).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.THEME).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.PREMIUM).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.WEEKLY_REVIEWS).catch(() => null),
+        AsyncStorage.getItem(STORAGE_KEYS.ONBOARDED).catch(() => null),
+        AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATIONS).catch(() => null),
       ]);
 
       const rawHabits: Habit[] = habitsData ? JSON.parse(habitsData) : [];
@@ -98,6 +108,8 @@ export const useStore = create<AppState>((set, get) => ({
       const themeMode: ThemeMode = (themeData as ThemeMode) || 'light';
       const isPremium: boolean = premiumData === 'true';
       const weeklyReviews: WeeklyReview[] = reviewsData ? JSON.parse(reviewsData) : [];
+      const hasOnboarded: boolean = onboardedData === 'true';
+      const notificationsEnabled: boolean = notificationsData === 'true';
 
       // Migra hábitos antigos (sem weeklyGoal / lastStreakWeekKey) e recalcula streak
       const habits = rawHabits.map(h => {
@@ -109,7 +121,7 @@ export const useStore = create<AppState>((set, get) => ({
         return recalcStreakOnLoad(migrated);
       });
 
-      set({ habits, profile, themeMode, isPremium, isLoading: false, weeklyReviews });
+      set({ habits, profile, themeMode, isPremium, isLoading: false, weeklyReviews, hasOnboarded, notificationsEnabled });
 
       // Persiste se houve mudança por migração/streak reset
       if (JSON.stringify(rawHabits) !== JSON.stringify(habits)) {
@@ -123,6 +135,8 @@ export const useStore = create<AppState>((set, get) => ({
         isPremium: false,
         isLoading: false,
         weeklyReviews: [],
+        hasOnboarded: false,
+        notificationsEnabled: false,
       });
     }
   },
@@ -159,10 +173,11 @@ export const useStore = create<AppState>((set, get) => ({
 
   checkHabit: async (id): Promise<CheckResult> => {
     const today = getTodayString();
-    const { habits, profile } = get();
+    const { habits, profile, isPremium } = get();
     const habit = habits.find(h => h.id === id);
 
     if (!habit) throw new Error('Habit not found');
+    if (!isPremium && habits.indexOf(habit) >= MAX_FREE_HABITS) throw new Error('Habit locked');
     if (habit.completedDates.includes(today)) throw new Error('Already completed today');
 
     const weekDates = getCurrentWeekDates();
@@ -225,9 +240,10 @@ export const useStore = create<AppState>((set, get) => ({
 
   uncheckHabit: async (id) => {
     const today = getTodayString();
-    const { habits, profile } = get();
+    const { habits, profile, isPremium } = get();
     const habit = habits.find(h => h.id === id);
     if (!habit || !habit.completedDates.includes(today)) return;
+    if (!isPremium && habits.indexOf(habit) >= MAX_FREE_HABITS) return;
 
     const weekDates = getCurrentWeekDates();
     const completionsAfterUncheck = countCompletionsInWeek(
@@ -294,5 +310,15 @@ export const useStore = create<AppState>((set, get) => ({
     const weeklyReviews = [review, ...get().weeklyReviews];
     set({ weeklyReviews });
     await AsyncStorage.setItem(STORAGE_KEYS.WEEKLY_REVIEWS, JSON.stringify(weeklyReviews)).catch(() => {});
+  },
+
+  completeOnboarding: async (name, avatar, notificationsEnabled) => {
+    const profile = { ...get().profile, name, avatar };
+    set({ profile, hasOnboarded: true, notificationsEnabled });
+    await Promise.all([
+      AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile)).catch(() => {}),
+      AsyncStorage.setItem(STORAGE_KEYS.ONBOARDED, 'true').catch(() => {}),
+      AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, notificationsEnabled ? 'true' : 'false').catch(() => {}),
+    ]);
   },
 }));
