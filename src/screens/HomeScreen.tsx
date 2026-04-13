@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet, Alert, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { useStore } from '../store';
 import { HabitCard } from '../components/HabitCard';
 import { EmptyState } from '../components/EmptyState';
 import { FAB } from '../components/FAB';
+import { GoalCelebrationModal } from '../components/GoalCelebrationModal';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { MAX_FREE_HABITS } from '../utils/levels';
 import { getTodayString } from '../utils/dates';
@@ -42,6 +43,14 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const theme = isDarkMode ? colors.dark : colors.light;
   const canAddHabit = isPremium || habits.length < MAX_FREE_HABITS;
 
+  const [celebration, setCelebration] = useState<{
+    visible: boolean;
+    habitName: string;
+    habitEmoji: string;
+    streak: number;
+    xpGained: number;
+  }>({ visible: false, habitName: '', habitEmoji: '', streak: 0, xpGained: 0 });
+
   const today = getTodayString();
   const checkableHabits = habits.filter((_, i) => isPremium || i < MAX_FREE_HABITS);
   const completedToday = checkableHabits.filter(h => h.completedDates.includes(today)).length;
@@ -62,10 +71,12 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleCheckComplete = (
-    _xpGained: number,
+    xpGained: number,
     newLevel: number | null,
-    _newStreak: number,
-    weekGoalReached: boolean
+    newStreak: number,
+    weekGoalReached: boolean,
+    habitName: string,
+    habitEmoji: string
   ) => {
     if (newLevel) {
       setTimeout(() => {
@@ -73,11 +84,13 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       }, 300);
     } else if (weekGoalReached) {
       setTimeout(() => {
-        Alert.alert(
-          'Meta semanal atingida!',
-          'Você completou sua meta desta semana. Continue assim!',
-          [{ text: 'Incrível!' }]
-        );
+        setCelebration({
+          visible: true,
+          habitName,
+          habitEmoji,
+          streak: newStreak,
+          xpGained,
+        });
       }, 300);
     }
   };
@@ -181,6 +194,16 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       </ScrollView>
 
       {habits.length > 0 && <FAB onPress={handleAddHabit} disabled={false} />}
+
+      <GoalCelebrationModal
+        visible={celebration.visible}
+        habitName={celebration.habitName}
+        habitEmoji={celebration.habitEmoji}
+        streak={celebration.streak}
+        xpGained={celebration.xpGained}
+        isDarkMode={isDarkMode}
+        onClose={() => setCelebration(prev => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 };

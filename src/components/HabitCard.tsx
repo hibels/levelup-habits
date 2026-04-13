@@ -17,7 +17,7 @@ interface HabitCardProps {
   isDarkMode: boolean;
   isLocked?: boolean;
   onLongPress?: () => void;
-  onCheckComplete?: (xpGained: number, newLevel: number | null, newStreak: number, weekGoalReached: boolean) => void;
+  onCheckComplete?: (xpGained: number, newLevel: number | null, newStreak: number, weekGoalReached: boolean, habitName: string, habitEmoji: string) => void;
 }
 
 export const HabitCard: React.FC<HabitCardProps> = ({
@@ -49,7 +49,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
         await uncheckHabit(habit.id);
       } else {
         const result = await checkHabit(habit.id);
-        onCheckComplete?.(result.xpGained, result.newLevel, result.newStreak, result.weekGoalReached);
+        onCheckComplete?.(result.xpGained, result.newLevel, result.newStreak, result.weekGoalReached, habit.name, habit.emoji);
       }
     } catch (error) {
       console.error('Error toggling habit:', error);
