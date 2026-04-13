@@ -13,13 +13,13 @@ const MOCK_PRODUCTS: ProductInfo[] = [
   {
     id: PRODUCT_IDS.ANNUAL,
     title: 'Anual',
-    localizedPrice: 'R$ 59,90',
+    localizedPrice: 'R$ 49,90',
     period: 'annual',
   },
   {
     id: PRODUCT_IDS.MONTHLY,
     title: 'Mensal',
-    localizedPrice: 'R$ 8,90',
+    localizedPrice: 'R$ 9,90',
     period: 'monthly',
   },
 ];

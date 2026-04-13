@@ -34,8 +34,8 @@ const BENEFITS: Benefit[] = [
 
 /** Preços de fallback exibidos enquanto a loja carrega ou em caso de erro. */
 const FALLBACK_PRICES: Record<PlanType, string> = {
-  annual:  'R$ 59,90',
-  monthly: 'R$ 8,90',
+  annual:  'R$ 49,90',
+  monthly: 'R$ 9,90',
 };
 
 export const PaywallScreen: React.FC<Props> = ({ navigation }) => {
@@ -200,7 +200,7 @@ export const PaywallScreen: React.FC<Props> = ({ navigation }) => {
         <PlanCard
           plan="annual"
           price={getPrice('annual')}
-          note="R$ 4,99/mês · Melhor valor"
+          note="R$ 4,16/mês · Melhor valor"
           discountLabel="-30%"
           selected={selectedPlan === 'annual'}
           loading={loadingProducts}
