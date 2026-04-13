@@ -4,8 +4,8 @@
  * Substitua pelo bundle ID real do app ao configurar no App Store Connect.
  */
 export const PRODUCT_IDS = {
-  ANNUAL: 'com.leveluphabits.premium.annual',
-  MONTHLY: 'com.leveluphabits.premium.monthly',
+  ANNUAL: 'com.hibels.leveluphabits.premium.annual',
+  MONTHLY: 'com.hibels.leveluphabits.premium.monthly',
 } as const;
 
 export type ProductId = (typeof PRODUCT_IDS)[keyof typeof PRODUCT_IDS];
