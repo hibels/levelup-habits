@@ -12,8 +12,10 @@ import { EditHabitScreen } from '../screens/EditHabitScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
 import { WeeklyReviewScreen } from '../screens/WeeklyReviewScreen';
+import { OnboardingScreen } from '../screens/OnboardingScreen';
 
 export type RootStackParamList = {
+  Onboarding: undefined;
   MainTabs: undefined;
   EditHabit: { habitId: string | undefined };
   Paywall: undefined;
@@ -51,7 +53,7 @@ function MainTabs() {
         name="Home"
         component={HomeScreen}
         options={{
-          title: 'Meus Hábitos',
+          headerShown: false,
           tabBarLabel: 'Hábitos',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="checkmark-circle-outline" size={size} color={color} />
@@ -75,6 +77,7 @@ function MainTabs() {
 
 export function RootNavigator() {
   const themeMode = useStore(state => state.themeMode);
+  const hasOnboarded = useStore(state => state.hasOnboarded);
   const isDarkMode = themeMode === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
 
@@ -106,22 +109,32 @@ export function RootNavigator() {
           contentStyle: { backgroundColor: theme.background },
         }}
       >
-        <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-        <Stack.Screen
-          name="EditHabit"
-          component={EditHabitScreen}
-          options={{ presentation: 'modal', title: 'Novo Hábito' }}
-        />
-        <Stack.Screen
-          name="Paywall"
-          component={PaywallScreen}
-          options={{ presentation: 'modal', headerShown: false }}
-        />
-        <Stack.Screen
-          name="WeeklyReview"
-          component={WeeklyReviewScreen}
-          options={{ presentation: 'modal', headerShown: false }}
-        />
+        {!hasOnboarded ? (
+          <Stack.Screen
+            name="Onboarding"
+            component={OnboardingScreen}
+            options={{ headerShown: false }}
+          />
+        ) : (
+          <>
+            <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+            <Stack.Screen
+              name="EditHabit"
+              component={EditHabitScreen}
+              options={{ presentation: 'modal', title: 'Novo Hábito' }}
+            />
+            <Stack.Screen
+              name="Paywall"
+              component={PaywallScreen}
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+            <Stack.Screen
+              name="WeeklyReview"
+              component={WeeklyReviewScreen}
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

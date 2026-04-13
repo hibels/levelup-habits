@@ -15,13 +15,15 @@ import { getTodayString, getCurrentWeekDates, WEEKDAY_LABELS } from '../utils/da
 interface HabitCardProps {
   habit: Habit;
   isDarkMode: boolean;
+  isLocked?: boolean;
   onLongPress?: () => void;
-  onCheckComplete?: (xpGained: number, newLevel: number | null, newStreak: number, weekGoalReached: boolean) => void;
+  onCheckComplete?: (xpGained: number, newLevel: number | null, newStreak: number, weekGoalReached: boolean, habitName: string, habitEmoji: string) => void;
 }
 
 export const HabitCard: React.FC<HabitCardProps> = ({
   habit,
   isDarkMode,
+  isLocked = false,
   onLongPress,
   onCheckComplete,
 }) => {
@@ -39,7 +41,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   const goalReached = completionsThisWeek >= habit.weeklyGoal;
 
   const handleDayPress = async (date: string) => {
-    if (date !== today || isLoading) return;
+    if (date !== today || isLoading || isLocked) return;
 
     setIsLoading(true);
     try {
@@ -47,7 +49,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
         await uncheckHabit(habit.id);
       } else {
         const result = await checkHabit(habit.id);
-        onCheckComplete?.(result.xpGained, result.newLevel, result.newStreak, result.weekGoalReached);
+        onCheckComplete?.(result.xpGained, result.newLevel, result.newStreak, result.weekGoalReached, habit.name, habit.emoji);
       }
     } catch (error) {
       console.error('Error toggling habit:', error);
@@ -64,13 +66,24 @@ export const HabitCard: React.FC<HabitCardProps> = ({
         styles.container,
         {
           backgroundColor: theme.card,
-          borderColor: goalReached ? `${colors.primary.main}40` : theme.border,
+          borderColor: isLocked ? theme.border : goalReached ? `${colors.primary.main}40` : theme.border,
+          opacity: isLocked ? 0.6 : 1,
         },
         !isDarkMode && styles.shadow,
       ]}
-      onLongPress={onLongPress}
+      onLongPress={!isLocked ? onLongPress : undefined}
       activeOpacity={0.95}
     >
+      {/* Banner de bloqueado */}
+      {isLocked && (
+        <View style={[styles.lockedBanner, { backgroundColor: `${colors.secondary.main}18` }]}>
+          <Ionicons name="lock-closed" size={13} color={colors.secondary.main} />
+          <Text style={[styles.lockedText, { color: colors.secondary.main }]}>
+            Reative o Premium para continuar usando este hábito
+          </Text>
+        </View>
+      )}
+
       {/* Header: nome + streak */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
@@ -268,5 +281,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.xs,
     fontSize: 10,
+  },
+  lockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs,
+    paddingHorizontal: spacing.s,
+    paddingVertical: spacing.xxs,
+    borderRadius: borderRadius.xs,
+    marginBottom: spacing.s,
+  },
+  lockedText: {
+    ...typography.caption,
+    flex: 1,
+    fontWeight: '500',
   },
 });

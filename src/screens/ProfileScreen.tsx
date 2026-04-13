@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
   calendarCard: {
     padding: spacing.m,
     borderWidth: 1,
-    borderRadius: borderRadius.m,
+    borderRadius: borderRadius.l,
   },
   calendarWeekLabels: {
     flexDirection: 'row',
@@ -469,14 +469,16 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: 4,
+    justifyContent: 'space-around',
   },
   calendarCell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
-    borderRadius: borderRadius.xs,
-    padding: 1,
+    width: 34,
+    height: 34,
+    borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 2,
   },
   calendarDayNum: {
     fontSize: 9,
@@ -492,7 +494,7 @@ const styles = StyleSheet.create({
   legendDot: {
     width: 10,
     height: 10,
-    borderRadius: 2,
+    borderRadius: borderRadius.full,
   },
   legendLabel: {
     fontSize: 9,
