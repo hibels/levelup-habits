@@ -33,7 +33,7 @@ export const OnboardingScreen: React.FC<Props> = () => {
     if (step < TOTAL_STEPS - 1) {
       setStep(s => s + 1);
     } else {
-      await completeOnboarding(name.trim() || 'Você', '🚀', notificationsEnabled);
+      await completeOnboarding(name.trim() || 'Usuário', '', notificationsEnabled);
     }
   };
 

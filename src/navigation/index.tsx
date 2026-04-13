@@ -19,7 +19,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   EditHabit: { habitId: string | undefined };
   Paywall: undefined;
-  WeeklyReview: undefined;
+  WeeklyReview: { reviewId?: string } | undefined;
 };
 
 export type TabParamList = {
