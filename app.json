@@ -33,7 +33,8 @@
         {
           "photosPermission": "Permite que o app acesse suas fotos para definir a foto de perfil."
         }
-      ]
+      ],
+      "react-native-iap"
     ]
   }
 }
