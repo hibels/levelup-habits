@@ -24,6 +24,8 @@ import { useStore } from '../store';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { getLevelTitle } from '../utils/levels';
 import { formatDate } from '../utils/dates';
+import { HabitDetailSheet } from '../components/HabitDetailSheet';
+import type { Habit } from '../types';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -52,11 +54,13 @@ type Props = CompositeScreenProps<
 >;
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
-  const { profile, habits, themeMode, updateProfile, weeklyReviews } = useStore();
+  const { profile, habits, themeMode, updateProfile, weeklyReviews, isPremium } = useStore();
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
   });
+
+  const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
   const isDarkMode = themeMode === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
@@ -228,7 +232,6 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       {/* Calendário mensal de atividade */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Atividade</Text>
-
         <View style={[styles.calendarCard, { borderColor: theme.border }]}>
           <Calendar
             current={currentMonth}
@@ -241,8 +244,6 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             dayComponent={renderDay}
             theme={calendarTheme}
           />
-
-          {/* Legenda */}
           <View style={[styles.calendarLegend, { paddingHorizontal: spacing.m, paddingBottom: spacing.s }]}>
             <Text style={[styles.legendLabel, { color: theme.textSecondary }]}>Menos</Text>
             {intensityColors.map((c, i) => (
@@ -254,36 +255,57 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {/* Retrospectivas */}
-      {weeklyReviews.length > 0 && (
+      {(isPremium ? weeklyReviews.length > 0 : weeklyReviews.length > 0) && (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Retrospectivas</Text>
-          {weeklyReviews.map(review => {
-            const goalsMet = review.habitResults.filter(r => r.completed >= r.goal).length;
-            const total = review.habitResults.length;
-            const score = total > 0 ? Math.round((goalsMet / total) * 100) : 0;
-            const weekNum = review.weekKey.split('-W')[1];
-            return (
-              <TouchableOpacity
-                key={review.id}
-                style={[styles.reviewRow, { backgroundColor: theme.card, borderColor: theme.border }]}
-                onPress={() => navigation.navigate('WeeklyReview', { reviewId: review.id })}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.reviewScore, { backgroundColor: `${colors.primary.main}18` }]}>
-                  <Text style={[styles.reviewScoreText, { color: colors.primary.main }]}>{score}%</Text>
-                </View>
-                <View style={styles.reviewInfo}>
-                  <Text style={[styles.reviewWeek, { color: theme.textPrimary }]}>
-                    Semana {weekNum}
-                  </Text>
-                  <Text style={[styles.reviewDate, { color: theme.textSecondary }]} numberOfLines={1}>
-                    {getWeekDateRange(review.weekKey)}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={theme.disabled} />
-              </TouchableOpacity>
-            );
-          })}
+          {isPremium ? (
+            weeklyReviews.map(review => {
+              const goalsMet = review.habitResults.filter(r => r.completed >= r.goal).length;
+              const total = review.habitResults.length;
+              const score = total > 0 ? Math.round((goalsMet / total) * 100) : 0;
+              const weekNum = review.weekKey.split('-W')[1];
+              return (
+                <TouchableOpacity
+                  key={review.id}
+                  style={[styles.reviewRow, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  onPress={() => navigation.navigate('WeeklyReview', { reviewId: review.id })}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.reviewScore, { backgroundColor: `${colors.primary.main}18` }]}>
+                    <Text style={[styles.reviewScoreText, { color: colors.primary.main }]}>{score}%</Text>
+                  </View>
+                  <View style={styles.reviewInfo}>
+                    <Text style={[styles.reviewWeek, { color: theme.textPrimary }]}>
+                      Semana {weekNum}
+                    </Text>
+                    <Text style={[styles.reviewDate, { color: theme.textSecondary }]} numberOfLines={1}>
+                      {getWeekDateRange(review.weekKey)}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={theme.disabled} />
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <TouchableOpacity
+              style={[styles.lockedCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => navigation.navigate('Paywall')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.lockedIconBg, { backgroundColor: `${colors.primary.main}15` }]}>
+                <Ionicons name="lock-closed" size={22} color={colors.primary.main} />
+              </View>
+              <View style={styles.lockedInfo}>
+                <Text style={[styles.lockedTitle, { color: theme.textPrimary }]}>
+                  Histórico de retrospectivas
+                </Text>
+                <Text style={[styles.lockedSubtitle, { color: theme.textSecondary }]}>
+                  Acesse com o Premium
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.disabled} />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -301,32 +323,74 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
               const weekEnd = formatDate(now);
               return d >= weekStart && d <= weekEnd;
             }).length;
+            const goalReached = weekCompletions >= habit.weeklyGoal;
+            const progressPercent = Math.min((weekCompletions / habit.weeklyGoal) * 100, 100);
+
+            if (isPremium) {
+              return (
+                <TouchableOpacity
+                  key={habit.id}
+                  style={[styles.habitRow, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  onPress={() => setSelectedHabit(habit)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.habitEmoji}>{habit.emoji}</Text>
+                  <View style={styles.habitInfo}>
+                    <Text style={[styles.habitName, { color: theme.textPrimary }]}>{habit.name}</Text>
+                    <View style={styles.habitProgressRow}>
+                      <View style={[styles.habitTrack, { backgroundColor: theme.border }]}>
+                        <View style={[
+                          styles.habitFill,
+                          { width: `${progressPercent}%`, backgroundColor: goalReached ? colors.primary.main : colors.secondary.main },
+                        ]} />
+                      </View>
+                      <Text style={[styles.habitMeta, { color: theme.textSecondary }]}>
+                        {weekCompletions}/{habit.weeklyGoal}×
+                      </Text>
+                    </View>
+                  </View>
+                  {habit.streak > 0 && (
+                    <View style={styles.habitStreak}>
+                      <Ionicons name="flame" size={14} color={colors.accent.main} />
+                      <Text style={[styles.habitStreakText, { color: colors.accent.main }]}>
+                        {habit.streak}
+                      </Text>
+                    </View>
+                  )}
+                  <Ionicons name="chevron-forward" size={16} color={theme.disabled} />
+                </TouchableOpacity>
+              );
+            }
 
             return (
-              <View
+              <TouchableOpacity
                 key={habit.id}
-                style={[styles.habitRow, { backgroundColor: theme.card, borderColor: theme.border }]}
+                style={[styles.lockedCard, { backgroundColor: theme.card, borderColor: theme.border, marginBottom: spacing.s }]}
+                onPress={() => navigation.navigate('Paywall')}
+                activeOpacity={0.8}
               >
-                <Text style={styles.habitEmoji}>{habit.emoji}</Text>
-                <View style={styles.habitInfo}>
-                  <Text style={[styles.habitName, { color: theme.textPrimary }]}>{habit.name}</Text>
-                  <Text style={[styles.habitMeta, { color: theme.textSecondary }]}>
-                    {weekCompletions}/{habit.weeklyGoal}× esta semana
+                <View style={[styles.lockedIconBg, { backgroundColor: `${colors.primary.main}15` }]}>
+                  <Text style={styles.habitEmojiLocked}>{habit.emoji}</Text>
+                </View>
+                <View style={styles.lockedInfo}>
+                  <Text style={[styles.lockedTitle, { color: theme.textPrimary }]}>{habit.name}</Text>
+                  <Text style={[styles.lockedSubtitle, { color: theme.textSecondary }]}>
+                    Acesse os detalhes com o Premium
                   </Text>
                 </View>
-                {habit.streak > 0 && (
-                  <View style={styles.habitStreak}>
-                    <Ionicons name="flame" size={14} color={colors.accent.main} />
-                    <Text style={[styles.habitStreakText, { color: colors.accent.main }]}>
-                      {habit.streak}
-                    </Text>
-                  </View>
-                )}
-              </View>
+                <Ionicons name="lock-closed" size={16} color={theme.disabled} />
+              </TouchableOpacity>
             );
           })}
         </View>
       )}
+
+      <HabitDetailSheet
+        habit={selectedHabit}
+        visible={!!selectedHabit}
+        onClose={() => setSelectedHabit(null)}
+        isDarkMode={isDarkMode}
+      />
     </ScrollView>
   );
 };
@@ -508,7 +572,24 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: '600',
   },
+  habitProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: 4,
+  },
+  habitTrack: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  habitFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
   habitMeta: { ...typography.caption },
+  habitEmojiLocked: { fontSize: 22 },
   habitStreak: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -517,6 +598,30 @@ const styles = StyleSheet.create({
   habitStreakText: {
     ...typography.caption,
     fontWeight: '700',
+  },
+  lockedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.m,
+    borderWidth: 1,
+    borderRadius: borderRadius.m,
+    gap: spacing.s,
+  },
+  lockedIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.m,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lockedInfo: { flex: 1 },
+  lockedTitle: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  lockedSubtitle: {
+    ...typography.caption,
+    marginTop: 2,
   },
   reviewRow: {
     flexDirection: 'row',

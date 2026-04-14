@@ -4,7 +4,7 @@
  * Fluxo de compra:
  *  1. initialize()  → initConnection + registra purchaseUpdatedListener / purchaseErrorListener
  *  2. getProducts() → fetchProducts({ type: 'subs' }) retorna preços reais do App Store
- *  3. purchase()    → requestPurchase() → transação resolvida via purchaseUpdatedListener
+ *  3. purchase()    → requestPurchase({ type: 'subs' }) → transação resolvida via purchaseUpdatedListener
  *  4. destroy()     → remove listeners + endConnection
  *
  * Referência Apple:
@@ -110,12 +110,14 @@ export class ApplePurchaseService implements PurchaseService {
   async getProducts(productIds: string[]): Promise<ProductInfo[]> {
     try {
       const result = await fetchProducts({ skus: productIds, type: 'subs' });
+      console.log('[IAP] fetchProducts result:', JSON.stringify(result));
       if (!result) return [];
 
       return (result as Array<{ id: string; title?: string; displayPrice?: string }>)
         .map(mapProduct)
         .sort((a, b) => (a.period === 'annual' ? -1 : 1));
-    } catch {
+    } catch (err) {
+      console.error('[IAP] fetchProducts error:', err);
       return [];
     }
   }
@@ -128,7 +130,6 @@ export class ApplePurchaseService implements PurchaseService {
         request: {
           apple: {
             sku: productId,
-            // false = controlamos o finishTransaction manualmente (evita reembolso automático)
             andDangerouslyFinishTransactionAutomatically: false,
           },
         },

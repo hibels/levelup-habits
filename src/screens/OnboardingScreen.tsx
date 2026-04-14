@@ -100,7 +100,7 @@ function WelcomeStep() {
   return (
     <View style={styles.stepCenter}>
       <View style={[styles.bigIconBg, { backgroundColor: `${colors.primary.main}18` }]}>
-        <Text style={styles.bigEmoji}>🚀</Text>
+        <Ionicons name="flash" size={52} color={colors.primary.main} />
       </View>
       <Text style={styles.welcomeTitle}>LevelUp Habits</Text>
       <Text style={styles.welcomeSubtitle}>
@@ -255,9 +255,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.xl,
-  },
-  bigEmoji: {
-    fontSize: 52,
   },
   welcomeTitle: {
     fontSize: 32,
