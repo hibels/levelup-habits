@@ -10,29 +10,57 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
+
+LocaleConfig.locales['pt-BR'] = {
+  monthNames: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
+  monthNamesShort: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+  dayNames: ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'],
+  dayNamesShort: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+  today: 'Hoje',
+};
+LocaleConfig.defaultLocale = 'pt-BR';
 import { useStore } from '../store';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { getLevelTitle } from '../utils/levels';
-import { getMonthDates, formatDate } from '../utils/dates';
+import { formatDate } from '../utils/dates';
+import { HabitDetailSheet } from '../components/HabitDetailSheet';
+import type { Habit } from '../types';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../navigation';
+
+function getWeekDateRange(weekKey: string): string {
+  const [yearStr, weekStr] = weekKey.split('-W');
+  const year = parseInt(yearStr, 10);
+  const week = parseInt(weekStr, 10);
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const monday = new Date(jan4);
+  monday.setDate(jan4.getDate() - jan4Day + 1 + (week - 1) * 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  if (monday.getMonth() === sunday.getMonth()) {
+    return `${monday.getDate()}–${sunday.getDate()} ${months[sunday.getMonth()]} ${sunday.getFullYear()}`;
+  }
+  return `${monday.getDate()} ${months[monday.getMonth()]} – ${sunday.getDate()} ${months[sunday.getMonth()]} ${sunday.getFullYear()}`;
+}
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Profile'>,
   NativeStackScreenProps<RootStackParamList>
 >;
 
-const MONTH_NAMES = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-];
-
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
-  const { profile, habits, themeMode, updateProfile } = useStore();
-  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
-  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const { profile, habits, themeMode, updateProfile, weeklyReviews, isPremium } = useStore();
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+
+  const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
   const isDarkMode = themeMode === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
@@ -56,8 +84,6 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     ? Math.round((completedInLast7Days / (totalHabits * 7)) * 100)
     : 0;
 
-  // Calendário mensal: nível de preenchimento por dia (0–4 para cor)
-  const monthDates = getMonthDates(calendarYear, calendarMonth);
   const today = formatDate(new Date());
 
   const getDayIntensity = (date: string): 0 | 1 | 2 | 3 | 4 => {
@@ -75,9 +101,41 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     ? ['#1E293B', '#064E3B', '#065F46', '#047857', '#10B981']
     : ['#F3F4F6', '#D1FAE5', '#A7F3D0', '#6EE7B7', '#10B981'];
 
-  // Primeiro dia do mês (para offset na grade)
-  const firstDayOfMonth = new Date(calendarYear, calendarMonth, 1).getDay();
-  const offsetDays = (firstDayOfMonth + 6) % 7; // Ajusta para segunda = 0
+  const renderDay = ({ date, state }: { date?: { dateString: string; day: number }; state?: string }) => {
+    if (!date) return <View style={styles.calendarCell} />;
+    const isFuture = state === 'disabled';
+    const intensity = isFuture ? 0 : getDayIntensity(date.dateString);
+    const isToday = date.dateString === today;
+    return (
+      <View style={styles.calendarCell}>
+        <View style={[
+          styles.calendarDot,
+          {
+            backgroundColor: intensityColors[intensity],
+            borderWidth: isToday ? 1.5 : 0,
+            borderColor: isToday ? colors.primary.main : 'transparent',
+          },
+        ]}>
+          <Text style={[
+            styles.calendarDayNum,
+            { color: isFuture ? theme.disabled : intensity > 2 ? '#FFFFFF' : theme.textSecondary },
+          ]}>
+            {date.day}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  const calendarTheme = {
+    calendarBackground: theme.card,
+    textSectionTitleColor: theme.textSecondary,
+    monthTextColor: theme.textPrimary,
+    textMonthFontWeight: '600' as const,
+    arrowColor: theme.textSecondary,
+    textDayHeaderFontSize: 11,
+    textMonthFontSize: 14,
+  };
 
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -96,31 +154,6 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const navigatePrevMonth = () => {
-    if (calendarMonth === 0) {
-      setCalendarMonth(11);
-      setCalendarYear(y => y - 1);
-    } else {
-      setCalendarMonth(m => m - 1);
-    }
-  };
-
-  const navigateNextMonth = () => {
-    const now = new Date();
-    if (calendarYear === now.getFullYear() && calendarMonth === now.getMonth()) return;
-    if (calendarMonth === 11) {
-      setCalendarMonth(0);
-      setCalendarYear(y => y + 1);
-    } else {
-      setCalendarMonth(m => m + 1);
-    }
-  };
-
-  const isNextMonthDisabled = () => {
-    const now = new Date();
-    return calendarYear === now.getFullYear() && calendarMonth === now.getMonth();
-  };
-
   const xpForLevel = profile.xp;
   const xpProgress = xpForLevel % 100;
 
@@ -137,7 +170,11 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             <Image source={{ uri: profile.photoUri }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarEmojiBg}>
-              <Text style={styles.avatarEmoji}>{profile.avatar}</Text>
+              {profile.avatar ? (
+                <Text style={styles.avatarEmoji}>{profile.avatar}</Text>
+              ) : (
+                <Ionicons name="person" size={44} color="#FFFFFF" />
+              )}
             </View>
           )}
           <View style={styles.editAvatarBadge}>
@@ -194,69 +231,20 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Calendário mensal de atividade */}
       <View style={styles.section}>
-        <View style={styles.calendarHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Atividade</Text>
-          <View style={styles.calendarNav}>
-            <TouchableOpacity onPress={navigatePrevMonth} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={20} color={theme.textSecondary} />
-            </TouchableOpacity>
-            <Text style={[styles.calendarMonthLabel, { color: theme.textSecondary }]}>
-              {MONTH_NAMES[calendarMonth]} {calendarYear}
-            </Text>
-            <TouchableOpacity onPress={navigateNextMonth} disabled={isNextMonthDisabled()} activeOpacity={0.7}>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={isNextMonthDisabled() ? theme.disabled : theme.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={[styles.calendarCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Labels de dias da semana */}
-          <View style={styles.calendarWeekLabels}>
-            {['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((d, i) => (
-              <Text key={i} style={[styles.calendarWeekDay, { color: theme.textSecondary }]}>
-                {d}
-              </Text>
-            ))}
-          </View>
-
-          {/* Grade de dias */}
-          <View style={styles.calendarGrid}>
-            {/* Offset */}
-            {Array.from({ length: offsetDays }).map((_, i) => (
-              <View key={`offset-${i}`} style={styles.calendarCell} />
-            ))}
-            {monthDates.map(date => {
-              const intensity = getDayIntensity(date);
-              const isToday = date === today;
-              return (
-                <View
-                  key={date}
-                  style={[
-                    styles.calendarCell,
-                    {
-                      backgroundColor: intensityColors[intensity],
-                      borderWidth: isToday ? 1.5 : 0,
-                      borderColor: isToday ? colors.primary.main : 'transparent',
-                    },
-                  ]}
-                >
-                  <Text style={[
-                    styles.calendarDayNum,
-                    { color: intensity > 2 ? '#FFFFFF' : theme.textSecondary }
-                  ]}>
-                    {parseInt(date.split('-')[2], 10)}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Legenda */}
-          <View style={styles.calendarLegend}>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Atividade</Text>
+        <View style={[styles.calendarCard, { borderColor: theme.border }]}>
+          <Calendar
+            current={currentMonth}
+            maxDate={today}
+            firstDay={0}
+            hideExtraDays
+            onMonthChange={(month) => {
+              setCurrentMonth(`${month.year}-${String(month.month).padStart(2, '0')}-01`);
+            }}
+            dayComponent={renderDay}
+            theme={calendarTheme}
+          />
+          <View style={[styles.calendarLegend, { paddingHorizontal: spacing.m, paddingBottom: spacing.s }]}>
             <Text style={[styles.legendLabel, { color: theme.textSecondary }]}>Menos</Text>
             {intensityColors.map((c, i) => (
               <View key={i} style={[styles.legendDot, { backgroundColor: c, borderWidth: i === 0 ? 1 : 0, borderColor: theme.border }]} />
@@ -265,6 +253,61 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
       </View>
+
+      {/* Retrospectivas */}
+      {(isPremium ? weeklyReviews.length > 0 : weeklyReviews.length > 0) && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Retrospectivas</Text>
+          {isPremium ? (
+            weeklyReviews.map(review => {
+              const goalsMet = review.habitResults.filter(r => r.completed >= r.goal).length;
+              const total = review.habitResults.length;
+              const score = total > 0 ? Math.round((goalsMet / total) * 100) : 0;
+              const weekNum = review.weekKey.split('-W')[1];
+              return (
+                <TouchableOpacity
+                  key={review.id}
+                  style={[styles.reviewRow, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  onPress={() => navigation.navigate('WeeklyReview', { reviewId: review.id })}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.reviewScore, { backgroundColor: `${colors.primary.main}18` }]}>
+                    <Text style={[styles.reviewScoreText, { color: colors.primary.main }]}>{score}%</Text>
+                  </View>
+                  <View style={styles.reviewInfo}>
+                    <Text style={[styles.reviewWeek, { color: theme.textPrimary }]}>
+                      Semana {weekNum}
+                    </Text>
+                    <Text style={[styles.reviewDate, { color: theme.textSecondary }]} numberOfLines={1}>
+                      {getWeekDateRange(review.weekKey)}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={theme.disabled} />
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <TouchableOpacity
+              style={[styles.lockedCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => navigation.navigate('Paywall')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.lockedIconBg, { backgroundColor: `${colors.primary.main}15` }]}>
+                <Ionicons name="lock-closed" size={22} color={colors.primary.main} />
+              </View>
+              <View style={styles.lockedInfo}>
+                <Text style={[styles.lockedTitle, { color: theme.textPrimary }]}>
+                  Histórico de retrospectivas
+                </Text>
+                <Text style={[styles.lockedSubtitle, { color: theme.textSecondary }]}>
+                  Acesse com o Premium
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.disabled} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Hábitos ativos */}
       {habits.length > 0 && (
@@ -280,32 +323,74 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
               const weekEnd = formatDate(now);
               return d >= weekStart && d <= weekEnd;
             }).length;
+            const goalReached = weekCompletions >= habit.weeklyGoal;
+            const progressPercent = Math.min((weekCompletions / habit.weeklyGoal) * 100, 100);
+
+            if (isPremium) {
+              return (
+                <TouchableOpacity
+                  key={habit.id}
+                  style={[styles.habitRow, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  onPress={() => setSelectedHabit(habit)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.habitEmoji}>{habit.emoji}</Text>
+                  <View style={styles.habitInfo}>
+                    <Text style={[styles.habitName, { color: theme.textPrimary }]}>{habit.name}</Text>
+                    <View style={styles.habitProgressRow}>
+                      <View style={[styles.habitTrack, { backgroundColor: theme.border }]}>
+                        <View style={[
+                          styles.habitFill,
+                          { width: `${progressPercent}%`, backgroundColor: goalReached ? colors.primary.main : colors.secondary.main },
+                        ]} />
+                      </View>
+                      <Text style={[styles.habitMeta, { color: theme.textSecondary }]}>
+                        {weekCompletions}/{habit.weeklyGoal}×
+                      </Text>
+                    </View>
+                  </View>
+                  {habit.streak > 0 && (
+                    <View style={styles.habitStreak}>
+                      <Ionicons name="flame" size={14} color={colors.accent.main} />
+                      <Text style={[styles.habitStreakText, { color: colors.accent.main }]}>
+                        {habit.streak}
+                      </Text>
+                    </View>
+                  )}
+                  <Ionicons name="chevron-forward" size={16} color={theme.disabled} />
+                </TouchableOpacity>
+              );
+            }
 
             return (
-              <View
+              <TouchableOpacity
                 key={habit.id}
-                style={[styles.habitRow, { backgroundColor: theme.card, borderColor: theme.border }]}
+                style={[styles.lockedCard, { backgroundColor: theme.card, borderColor: theme.border, marginBottom: spacing.s }]}
+                onPress={() => navigation.navigate('Paywall')}
+                activeOpacity={0.8}
               >
-                <Text style={styles.habitEmoji}>{habit.emoji}</Text>
-                <View style={styles.habitInfo}>
-                  <Text style={[styles.habitName, { color: theme.textPrimary }]}>{habit.name}</Text>
-                  <Text style={[styles.habitMeta, { color: theme.textSecondary }]}>
-                    {weekCompletions}/{habit.weeklyGoal}× esta semana
+                <View style={[styles.lockedIconBg, { backgroundColor: `${colors.primary.main}15` }]}>
+                  <Text style={styles.habitEmojiLocked}>{habit.emoji}</Text>
+                </View>
+                <View style={styles.lockedInfo}>
+                  <Text style={[styles.lockedTitle, { color: theme.textPrimary }]}>{habit.name}</Text>
+                  <Text style={[styles.lockedSubtitle, { color: theme.textSecondary }]}>
+                    Acesse os detalhes com o Premium
                   </Text>
                 </View>
-                {habit.streak > 0 && (
-                  <View style={styles.habitStreak}>
-                    <Ionicons name="flame" size={14} color={colors.accent.main} />
-                    <Text style={[styles.habitStreakText, { color: colors.accent.main }]}>
-                      {habit.streak}
-                    </Text>
-                  </View>
-                )}
-              </View>
+                <Ionicons name="lock-closed" size={16} color={theme.disabled} />
+              </TouchableOpacity>
             );
           })}
         </View>
       )}
+
+      <HabitDetailSheet
+        habit={selectedHabit}
+        visible={!!selectedHabit}
+        onClose={() => setSelectedHabit(null)}
+        isDarkMode={isDarkMode}
+      />
     </ScrollView>
   );
 };
@@ -434,51 +519,23 @@ const styles = StyleSheet.create({
     ...typography.caption,
     textAlign: 'center',
   },
-  calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.m,
-  },
-  calendarNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  calendarMonthLabel: {
-    ...typography.caption,
-    fontWeight: '600',
-    minWidth: 110,
-    textAlign: 'center',
-  },
   calendarCard: {
-    padding: spacing.m,
     borderWidth: 1,
     borderRadius: borderRadius.l,
-  },
-  calendarWeekLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: spacing.xs,
-  },
-  calendarWeekDay: {
-    ...typography.label,
-    width: 32,
-    textAlign: 'center',
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    justifyContent: 'space-around',
+    overflow: 'hidden',
   },
   calendarCell: {
-    width: 34,
-    height: 34,
-    borderRadius: borderRadius.full,
+    flex: 1,
+    aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 2,
+  },
+  calendarDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   calendarDayNum: {
     fontSize: 9,
@@ -515,7 +572,24 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: '600',
   },
+  habitProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: 4,
+  },
+  habitTrack: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  habitFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
   habitMeta: { ...typography.caption },
+  habitEmojiLocked: { fontSize: 22 },
   habitStreak: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -524,5 +598,58 @@ const styles = StyleSheet.create({
   habitStreakText: {
     ...typography.caption,
     fontWeight: '700',
+  },
+  lockedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.m,
+    borderWidth: 1,
+    borderRadius: borderRadius.m,
+    gap: spacing.s,
+  },
+  lockedIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.m,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lockedInfo: { flex: 1 },
+  lockedTitle: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  lockedSubtitle: {
+    ...typography.caption,
+    marginTop: 2,
+  },
+  reviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.m,
+    borderWidth: 1,
+    borderRadius: borderRadius.m,
+    marginBottom: spacing.s,
+    gap: spacing.s,
+  },
+  reviewScore: {
+    width: 52,
+    height: 52,
+    borderRadius: borderRadius.m,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reviewScoreText: {
+    ...typography.numberSmall,
+    fontWeight: '700',
+  },
+  reviewInfo: { flex: 1 },
+  reviewWeek: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  reviewDate: {
+    ...typography.caption,
+    marginTop: 2,
   },
 });

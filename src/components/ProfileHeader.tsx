@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { UserProfile } from '../types';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { getLevelTitle, getCurrentLevelXP, getXPForCurrentLevel } from '../utils/levels';
@@ -20,7 +21,11 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isDarkMod
     <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
       <View style={styles.topRow}>
         <View style={styles.avatarContainer}>
-          <Text style={styles.avatar}>{profile.avatar}</Text>
+          {profile.avatar ? (
+            <Text style={styles.avatar}>{profile.avatar}</Text>
+          ) : (
+            <Ionicons name="person" size={18} color={colors.primary.main} />
+          )}
         </View>
         <View style={styles.nameContainer}>
           <Text style={[styles.name, { color: theme.textPrimary }]}>{profile.name}</Text>

@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +32,9 @@ const BENEFITS: Benefit[] = [
   { icon: 'journal-outline',   text: 'Retrospectiva semanal ilimitada'  },
   { icon: 'trophy-outline',    text: 'Histórico de streaks completo'     },
 ];
+
+const PRIVACY_POLICY_URL = 'https://docs.google.com/document/d/SEU_ID_AQUI';
+const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stpl/en/';
 
 /** Preços de fallback exibidos enquanto a loja carrega ou em caso de erro. */
 const FALLBACK_PRICES: Record<PlanType, string> = {
@@ -252,6 +256,15 @@ export const PaywallScreen: React.FC<Props> = ({ navigation }) => {
 
       <Text style={[styles.legalText, { color: theme.disabled }]}>
         A assinatura é renovada automaticamente. Cancele a qualquer momento no App Store.
+        {' '}Ao assinar, você concorda com nossos{' '}
+        <Text style={styles.legalLink} onPress={() => Linking.openURL(TERMS_URL)}>
+          Termos de Uso
+        </Text>
+        {' '}e nossa{' '}
+        <Text style={styles.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+          Política de Privacidade
+        </Text>
+        .
       </Text>
     </ScrollView>
   );
@@ -476,6 +489,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     marginTop: spacing.xs,
     fontSize: 10,
-    lineHeight: 14,
+    lineHeight: 16,
+  },
+  legalLink: {
+    textDecorationLine: 'underline',
+    fontSize: 10,
   },
 });

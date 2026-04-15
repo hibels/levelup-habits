@@ -33,6 +33,8 @@ interface AppState {
   toggleTheme: () => void;
   updateProfile: (name: string, avatar: string, photoUri?: string | null) => Promise<void>;
   saveWeeklyReview: (review: Omit<WeeklyReview, 'id' | 'createdAt'>) => Promise<void>;
+  updateWeeklyReview: (id: string, data: { wentWell: string; toImprove: string }) => Promise<void>;
+  deleteWeeklyReview: (id: string) => Promise<void>;
   completeOnboarding: (name: string, avatar: string, notificationsEnabled: boolean) => Promise<void>;
   setPremium: (value: boolean) => Promise<void>;
 }
@@ -48,8 +50,8 @@ const STORAGE_KEYS = {
 };
 
 const DEFAULT_PROFILE: UserProfile = {
-  name: 'Você',
-  avatar: '🚀',
+  name: 'Usuário',
+  avatar: '',
   photoUri: null,
   level: 1,
   xp: 0,
@@ -309,6 +311,20 @@ export const useStore = create<AppState>((set, get) => ({
       createdAt: new Date().toISOString(),
     };
     const weeklyReviews = [review, ...get().weeklyReviews];
+    set({ weeklyReviews });
+    await AsyncStorage.setItem(STORAGE_KEYS.WEEKLY_REVIEWS, JSON.stringify(weeklyReviews)).catch(() => {});
+  },
+
+  updateWeeklyReview: async (id, data) => {
+    const weeklyReviews = get().weeklyReviews.map(r =>
+      r.id === id ? { ...r, ...data } : r
+    );
+    set({ weeklyReviews });
+    await AsyncStorage.setItem(STORAGE_KEYS.WEEKLY_REVIEWS, JSON.stringify(weeklyReviews)).catch(() => {});
+  },
+
+  deleteWeeklyReview: async (id) => {
+    const weeklyReviews = get().weeklyReviews.filter(r => r.id !== id);
     set({ weeklyReviews });
     await AsyncStorage.setItem(STORAGE_KEYS.WEEKLY_REVIEWS, JSON.stringify(weeklyReviews)).catch(() => {});
   },
