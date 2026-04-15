@@ -40,6 +40,13 @@
           "photosPermission": "Permite que o app acesse suas fotos para definir a foto de perfil."
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#3B82F6"
+        }
+      ],
       "react-native-iap"
     ],
     "extra": {

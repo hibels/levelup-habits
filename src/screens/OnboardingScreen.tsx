@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { scheduleDailyReminder, cancelDailyReminder } from '../utils/notifications';
 import { useStore } from '../store';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -25,6 +26,18 @@ export const OnboardingScreen: React.FC<Props> = () => {
   const [name, setName] = useState('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const completeOnboarding = useStore(state => state.completeOnboarding);
+
+  const handleNotificationsToggle = async (value: boolean) => {
+    if (value) {
+      const { status } = await import('expo-notifications').then(n => n.requestPermissionsAsync());
+      const granted = status === 'granted';
+      setNotificationsEnabled(granted);
+      if (granted) await scheduleDailyReminder();
+    } else {
+      setNotificationsEnabled(false);
+      await cancelDailyReminder();
+    }
+  };
   const insets = useSafeAreaInsets();
 
   const canProceed = step !== 1 || name.trim().length > 0;
@@ -68,7 +81,7 @@ export const OnboardingScreen: React.FC<Props> = () => {
         <View style={styles.content}>
           {step === 0 && <WelcomeStep />}
           {step === 1 && <NameStep name={name} onChangeName={setName} onSubmit={() => canProceed && handleNext()} />}
-          {step === 2 && <NotificationsStep value={notificationsEnabled} onChange={setNotificationsEnabled} />}
+          {step === 2 && <NotificationsStep value={notificationsEnabled} onChange={handleNotificationsToggle} />}
           {step === 3 && <HowItWorksStep />}
         </View>
 
@@ -140,7 +153,7 @@ function NameStep({ name, onChangeName, onSubmit }: NameStepProps) {
 
 interface NotificationsStepProps {
   value: boolean;
-  onChange: (v: boolean) => void;
+  onChange: (v: boolean) => void | Promise<void>;
 }
 
 function NotificationsStep({ value, onChange }: NotificationsStepProps) {
