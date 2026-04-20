@@ -37,7 +37,7 @@ interface AppState {
   saveWeeklyReview: (review: Omit<WeeklyReview, 'id' | 'createdAt'>) => Promise<void>;
   updateWeeklyReview: (id: string, data: { wentWell: string; toImprove: string }) => Promise<void>;
   deleteWeeklyReview: (id: string) => Promise<void>;
-  completeOnboarding: (name: string, avatar: string, notificationsEnabled: boolean) => Promise<void>;
+  completeOnboarding: (name: string, avatar: string, notificationsEnabled: boolean, photoUri?: string | null) => Promise<void>;
   setPremium: (value: boolean) => Promise<void>;
 }
 
@@ -346,8 +346,8 @@ export const useStore = create<AppState>((set, get) => ({
     await AsyncStorage.setItem(STORAGE_KEYS.PREMIUM, value ? 'true' : 'false').catch(() => {});
   },
 
-  completeOnboarding: async (name, avatar, notificationsEnabled) => {
-    const profile = { ...get().profile, name, avatar };
+  completeOnboarding: async (name, avatar, notificationsEnabled, photoUri = null) => {
+    const profile = { ...get().profile, name, avatar, photoUri };
     set({ profile, hasOnboarded: true, notificationsEnabled });
     await Promise.all([
       AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile)).catch(() => {}),
