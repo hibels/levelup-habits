@@ -235,6 +235,23 @@ Não implemente essas features sem alinhamento explícito com o usuário.
 
 ---
 
+## Testes unitários
+
+- Implemente testes unitários para **todas as features** que criar ou modificar.
+- Execute a suíte de testes completa antes de fazer commit e confirme que todos os testes estão passando.
+- Nunca faça commit com testes falhando.
+
+---
+
+## Internacionalização (i18n)
+
+- Todo texto exibido ao usuário deve ser externalizado — nunca hard-code strings de UI.
+- Suporte dois idiomas: **Português (pt-BR)** e **Inglês (en-US)**.
+- Ao adicionar uma nova string, adicione as traduções para ambos os idiomas ao mesmo tempo.
+- Use o sistema de i18n do projeto (ex: `i18n-js`, `expo-localization`) para todos os textos.
+
+---
+
 ## O que evitar
 
 - Não adicione lógica de streak diário — o streak é **semanal**.
