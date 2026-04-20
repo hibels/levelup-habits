@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Habit } from '../types';
@@ -33,6 +33,10 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   const checkHabit = useStore(state => state.checkHabit);
   const uncheckHabit = useStore(state => state.uncheckHabit);
 
+  const emojiScale = useRef(new Animated.Value(1)).current;
+  const xpOpacity = useRef(new Animated.Value(0)).current;
+  const xpTranslateY = useRef(new Animated.Value(0)).current;
+
   const theme = isDarkMode ? colors.dark : colors.light;
   const today = getTodayString();
   const weekDates = getCurrentWeekDates();
@@ -41,6 +45,38 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   const completionsThisWeek = weekDates.filter(d => habit.completedDates.includes(d)).length;
   const goalProgress = Math.min(completionsThisWeek, habit.weeklyGoal);
   const goalReached = completionsThisWeek >= habit.weeklyGoal;
+
+  const triggerCheckAnimations = () => {
+    emojiScale.setValue(1);
+    xpOpacity.setValue(0);
+    xpTranslateY.setValue(0);
+
+    Animated.sequence([
+      Animated.spring(emojiScale, {
+        toValue: 1.3,
+        tension: 200,
+        friction: 5,
+        useNativeDriver: true,
+      }),
+      Animated.spring(emojiScale, {
+        toValue: 1,
+        tension: 200,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    Animated.sequence([
+      Animated.timing(xpOpacity, { toValue: 1, duration: 100, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.timing(xpTranslateY, { toValue: -36, duration: 600, useNativeDriver: true }),
+        Animated.sequence([
+          Animated.delay(250),
+          Animated.timing(xpOpacity, { toValue: 0, duration: 350, useNativeDriver: true }),
+        ]),
+      ]),
+    ]).start();
+  };
 
   const handleDayPress = async (date: string) => {
     if (date !== today || isLoading || isLocked) return;
@@ -51,6 +87,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
         await uncheckHabit(habit.id);
       } else {
         const result = await checkHabit(habit.id);
+        triggerCheckAnimations();
         onCheckComplete?.(result.xpGained, result.newLevel, result.newStreak, result.weekGoalReached, habit.name, habit.emoji);
       }
     } catch (error) {
@@ -89,7 +126,20 @@ export const HabitCard: React.FC<HabitCardProps> = ({
       {/* Header: nome + streak */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Text style={styles.emoji}>{habit.emoji}</Text>
+          <View style={styles.emojiWrapper}>
+            <Animated.View style={{ transform: [{ scale: emojiScale }] }}>
+              <Text style={styles.emoji}>{habit.emoji}</Text>
+            </Animated.View>
+            <Animated.Text
+              style={[
+                styles.xpPopup,
+                { opacity: xpOpacity, transform: [{ translateY: xpTranslateY }] },
+              ]}
+              pointerEvents="none"
+            >
+              +10 XP
+            </Animated.Text>
+          </View>
           <Text
             style={[styles.name, { color: theme.textPrimary }]}
             numberOfLines={1}
@@ -148,6 +198,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
           return (
             <TouchableOpacity
               key={date}
+              testID={isCurrentDay ? 'today-checkbox' : undefined}
               style={styles.dayColumn}
               onPress={() => handleDayPress(date)}
               disabled={!isCurrentDay || isLoading}
@@ -218,9 +269,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  emojiWrapper: {
+    marginRight: spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emoji: {
     fontSize: 24,
-    marginRight: spacing.xs,
+  },
+  xpPopup: {
+    position: 'absolute',
+    top: -18,
+    alignSelf: 'center',
+    color: colors.primary.main,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   name: {
     ...typography.bodyLarge,
