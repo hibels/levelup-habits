@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { HabitCard } from '../components/HabitCard';
+import { HabitGridView } from '../components/HabitGridView';
 import { EmptyState } from '../components/EmptyState';
 import { FAB } from '../components/FAB';
 import { GoalCelebrationModal } from '../components/GoalCelebrationModal';
@@ -36,7 +37,7 @@ function formatTodayDate(): string {
 }
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
-  const { habits, profile, themeMode, isPremium } = useStore();
+  const { habits, profile, themeMode, isPremium, viewMode, setViewMode } = useStore();
   const insets = useSafeAreaInsets();
 
   const isDarkMode = themeMode === 'dark';
@@ -165,7 +166,30 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         )}
       </View>
 
-      {/* Habit list */}
+      {/* Section header */}
+      {habits.length > 0 && (
+        <View style={[styles.sectionHeader, { borderBottomColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Hábitos</Text>
+          <View style={[styles.segmentedControl, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <TouchableOpacity
+              style={[styles.segment, viewMode === 'card' && { backgroundColor: colors.primary.main }]}
+              onPress={() => setViewMode('card')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="list-outline" size={15} color={viewMode === 'card' ? '#FFFFFF' : theme.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.segment, viewMode === 'grid' && { backgroundColor: colors.primary.main }]}
+              onPress={() => setViewMode('grid')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="grid-outline" size={15} color={viewMode === 'grid' ? '#FFFFFF' : theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Habit list / grid */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -176,6 +200,13 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       >
         {habits.length === 0 ? (
           <EmptyState isDarkMode={isDarkMode} onAddHabit={handleAddHabit} />
+        ) : viewMode === 'grid' ? (
+          <HabitGridView
+            habits={habits}
+            isDarkMode={isDarkMode}
+            isPremium={isPremium}
+            onCheckComplete={handleCheckComplete}
+          />
         ) : (
           habits.map((habit, index) => {
             const isLocked = !isPremium && index >= MAX_FREE_HABITS;
@@ -240,7 +271,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.s,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 2,
   },
   statsRow: {
     flexDirection: 'row',
@@ -260,10 +290,36 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
   },
+  segmentedControl: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: borderRadius.s,
+    overflow: 'hidden',
+  },
+  segment: {
+    paddingHorizontal: spacing.s,
+    paddingVertical: spacing.xxs + 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+  },
+  sectionTitle: {
+    ...typography.body,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: spacing.s,
+    paddingTop: spacing.xs,
   },
 });

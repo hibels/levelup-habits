@@ -90,19 +90,23 @@ export function getCurrentWeekKey(): string {
 }
 
 /**
- * Retorna os 7 dias (YYYY-MM-DD) da semana corrente (seg–dom)
+ * Retorna os 7 dias (YYYY-MM-DD) da semana corrente ordenados Dom–Sáb.
+ * Os mesmos 7 dias ISO (ancorados na segunda) são retornados, apenas
+ * reordenados para exibição: domingo aparece primeiro.
  */
 export function getCurrentWeekDates(): string[] {
   const today = new Date();
   const dayOfWeek = today.getDay(); // 0=dom, 1=seg...
   const monday = new Date(today);
-  // Ajusta para segunda-feira
   monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
-  return Array.from({ length: 7 }, (_, i) => {
+  const dates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     return formatDate(d);
   });
+  // Reorder: move Sunday (last) to front → [Dom, Seg, Ter, Qua, Qui, Sex, Sáb]
+  const sunday = dates.pop()!;
+  return [sunday, ...dates];
 }
 
 /**
@@ -117,7 +121,7 @@ export function getMonthDates(year: number, month: number): string[] {
 }
 
 /**
- * Rótulos curtos dos dias da semana (começa na segunda)
+ * Rótulos curtos dos dias da semana (começa no domingo)
  */
-export const WEEKDAY_LABELS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-export const WEEKDAY_LABELS_FULL = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+export const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+export const WEEKDAY_LABELS_FULL = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];

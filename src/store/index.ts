@@ -23,8 +23,10 @@ interface AppState {
   weeklyReviews: WeeklyReview[];
   hasOnboarded: boolean;
   notificationsEnabled: boolean;
+  viewMode: 'card' | 'grid';
 
   loadData: () => Promise<void>;
+  setViewMode: (mode: 'card' | 'grid') => Promise<void>;
   addHabit: (name: string, emoji: string, weeklyGoal: number) => Promise<void>;
   editHabit: (id: string, name: string, emoji: string, weeklyGoal: number) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
@@ -47,6 +49,7 @@ const STORAGE_KEYS = {
   WEEKLY_REVIEWS: '@levelup:weeklyReviews',
   ONBOARDED: '@levelup:onboarded',
   NOTIFICATIONS: '@levelup:notifications',
+  VIEW_MODE: '@levelup:viewMode',
 };
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -91,10 +94,11 @@ export const useStore = create<AppState>((set, get) => ({
   weeklyReviews: [],
   hasOnboarded: false,
   notificationsEnabled: false,
+  viewMode: 'card',
 
   loadData: async () => {
     try {
-      const [habitsData, profileData, themeData, premiumData, reviewsData, onboardedData, notificationsData] = await Promise.all([
+      const [habitsData, profileData, themeData, premiumData, reviewsData, onboardedData, notificationsData, viewModeData] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.HABITS).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.PROFILE).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.THEME).catch(() => null),
@@ -102,6 +106,7 @@ export const useStore = create<AppState>((set, get) => ({
         AsyncStorage.getItem(STORAGE_KEYS.WEEKLY_REVIEWS).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.ONBOARDED).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATIONS).catch(() => null),
+        AsyncStorage.getItem(STORAGE_KEYS.VIEW_MODE).catch(() => null),
       ]);
 
       const rawHabits: Habit[] = habitsData ? JSON.parse(habitsData) : [];
@@ -113,6 +118,7 @@ export const useStore = create<AppState>((set, get) => ({
       const weeklyReviews: WeeklyReview[] = reviewsData ? JSON.parse(reviewsData) : [];
       const hasOnboarded: boolean = onboardedData === 'true';
       const notificationsEnabled: boolean = notificationsData === 'true';
+      const viewMode: 'card' | 'grid' = (viewModeData === 'grid' ? 'grid' : 'card');
 
       // Migra hábitos antigos (sem weeklyGoal / lastStreakWeekKey) e recalcula streak
       const habits = rawHabits.map(h => {
@@ -124,7 +130,7 @@ export const useStore = create<AppState>((set, get) => ({
         return recalcStreakOnLoad(migrated);
       });
 
-      set({ habits, profile, themeMode, isPremium, isLoading: false, weeklyReviews, hasOnboarded, notificationsEnabled });
+      set({ habits, profile, themeMode, isPremium, isLoading: false, weeklyReviews, hasOnboarded, notificationsEnabled, viewMode });
 
       // Persiste se houve mudança por migração/streak reset
       if (JSON.stringify(rawHabits) !== JSON.stringify(habits)) {
@@ -140,6 +146,7 @@ export const useStore = create<AppState>((set, get) => ({
         weeklyReviews: [],
         hasOnboarded: false,
         notificationsEnabled: false,
+        viewMode: 'card',
       });
     }
   },
@@ -290,6 +297,11 @@ export const useStore = create<AppState>((set, get) => ({
       AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(updatedHabits)).catch(() => {}),
       AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updatedProfile)).catch(() => {}),
     ]);
+  },
+
+  setViewMode: async (mode) => {
+    set({ viewMode: mode });
+    await AsyncStorage.setItem(STORAGE_KEYS.VIEW_MODE, mode).catch(() => {});
   },
 
   toggleTheme: () => {
