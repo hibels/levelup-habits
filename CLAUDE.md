@@ -252,6 +252,18 @@ Não implemente essas features sem alinhamento explícito com o usuário.
 
 ---
 
+## Fluxo de entrega (branch + PR)
+
+Ao finalizar uma implementação:
+
+1. Crie uma branch seguindo o padrão:
+   - `feat/<issue-id>` — para novas features (ex: `feat/LEV-22`)
+   - `fix/<issue-id>` — para correções de bugs (ex: `fix/LEV-23`)
+2. Faça o commit das alterações nessa branch.
+3. Abra uma Pull Request para a branch principal.
+
+---
+
 ## O que evitar
 
 - Não adicione lógica de streak diário — o streak é **semanal**.
