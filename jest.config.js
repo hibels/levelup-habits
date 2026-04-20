@@ -1,15 +1,13 @@
 module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testEnvironment: 'node',
-  transform: {
-    '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
-  },
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|zustand)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^expo/src/winter$': '<rootDir>/src/__mocks__/emptyMock.js',
+    '^expo/src/winter/runtime(\\.native)?$': '<rootDir>/src/__mocks__/emptyMock.js',
   },
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',

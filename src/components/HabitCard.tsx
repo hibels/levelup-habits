@@ -17,6 +17,7 @@ interface HabitCardProps {
   isDarkMode: boolean;
   isLocked?: boolean;
   onLongPress?: () => void;
+  onStatsPress?: () => void;
   onCheckComplete?: (xpGained: number, newLevel: number | null, newStreak: number, weekGoalReached: boolean, habitName: string, habitEmoji: string) => void;
 }
 
@@ -25,6 +26,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   isDarkMode,
   isLocked = false,
   onLongPress,
+  onStatsPress,
   onCheckComplete,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -96,14 +98,26 @@ export const HabitCard: React.FC<HabitCardProps> = ({
           </Text>
         </View>
 
-        {habit.streak > 0 && (
-          <View style={[styles.streakBadge, { backgroundColor: `${streakColor}18` }]}>
-            <Ionicons name="flame" size={13} color={streakColor} />
-            <Text style={[styles.streakText, { color: streakColor }]}>
-              {habit.streak}
-            </Text>
-          </View>
-        )}
+        <View style={styles.headerRight}>
+          {habit.streak > 0 && (
+            <View style={[styles.streakBadge, { backgroundColor: `${streakColor}18` }]}>
+              <Ionicons name="flame" size={13} color={streakColor} />
+              <Text style={[styles.streakText, { color: streakColor }]}>
+                {habit.streak}
+              </Text>
+            </View>
+          )}
+          {onStatsPress && (
+            <TouchableOpacity
+              style={styles.statsBtn}
+              onPress={onStatsPress}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.6}
+            >
+              <Ionicons name="bar-chart-outline" size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Progress bar da meta semanal */}
@@ -212,6 +226,17 @@ const styles = StyleSheet.create({
     ...typography.bodyLarge,
     fontWeight: '600',
     flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs,
+  },
+  statsBtn: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   streakBadge: {
     flexDirection: 'row',

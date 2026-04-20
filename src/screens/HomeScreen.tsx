@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Alert, Text, TouchableOpacity } from 'react-native';
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
@@ -81,7 +81,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   ) => {
     if (newLevel) {
       setTimeout(() => {
-        Alert.alert('Level Up!', `Você alcançou o Nível ${newLevel}!`, [{ text: 'Continuar' }]);
+        navigation.navigate('LevelUp', { level: newLevel, totalXP: profile.totalXP });
       }, 300);
     } else if (weekGoalReached) {
       setTimeout(() => {
@@ -217,6 +217,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 isDarkMode={isDarkMode}
                 isLocked={isLocked}
                 onLongPress={isLocked ? undefined : () => handleEditHabit(habit.id)}
+                onStatsPress={() => navigation.navigate('HabitAnalytics', { habitId: habit.id })}
                 onCheckComplete={handleCheckComplete}
               />
             );

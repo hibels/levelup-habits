@@ -13,6 +13,8 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
 import { WeeklyReviewScreen } from '../screens/WeeklyReviewScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
+import { LevelUpScreen } from '../screens/LevelUpScreen';
+import { HabitAnalyticsScreen } from '../screens/HabitAnalyticsScreen';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -20,6 +22,8 @@ export type RootStackParamList = {
   EditHabit: { habitId: string | undefined };
   Paywall: undefined;
   WeeklyReview: { reviewId?: string } | undefined;
+  LevelUp: { level: number; totalXP: number };
+  HabitAnalytics: { habitId: string };
 };
 
 export type TabParamList = {
@@ -131,6 +135,16 @@ export function RootNavigator() {
             <Stack.Screen
               name="WeeklyReview"
               component={WeeklyReviewScreen}
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+            <Stack.Screen
+              name="LevelUp"
+              component={LevelUpScreen}
+              options={{ presentation: 'fullScreenModal', headerShown: false }}
+            />
+            <Stack.Screen
+              name="HabitAnalytics"
+              component={HabitAnalyticsScreen}
               options={{ presentation: 'modal', headerShown: false }}
             />
           </>
