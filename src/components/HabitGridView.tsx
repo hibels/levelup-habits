@@ -134,7 +134,11 @@ export const HabitGridView: React.FC<HabitGridViewProps> = ({
                   disabled={!isInteractive}
                   activeOpacity={isInteractive ? 0.6 : 1}
                 >
-                  <View style={[styles.cellBase, cellStyle]} />
+                  <View style={[styles.cellBase, cellStyle]}>
+                    {isChecked && (
+                      <Ionicons name="checkmark" size={16} color="#fff" />
+                    )}
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -207,6 +211,8 @@ const styles = StyleSheet.create({
     borderRadius: CELL_SIZE / 2,
     borderWidth: 1.5,
     borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cellTodayComplete: {
     backgroundColor: colors.primary.main,
@@ -223,6 +229,7 @@ const styles = StyleSheet.create({
   },
   cellFuture: {
     backgroundColor: 'transparent',
-    borderColor: 'transparent',
+    borderColor: colors.primary.main,
+    opacity: 0.25,
   },
 });
