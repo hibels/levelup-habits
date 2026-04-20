@@ -230,6 +230,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 isDarkMode={isDarkMode}
                 isLocked={isLocked}
                 onLongPress={isLocked ? undefined : () => handleEditHabit(habit.id)}
+                onStatsPress={() => navigation.navigate('HabitAnalytics', { habitId: habit.id })}
                 onCheckComplete={handleCheckComplete}
               />
             );
