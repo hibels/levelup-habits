@@ -14,6 +14,7 @@ interface HabitGridViewProps {
   onCheckComplete?: (
     xpGained: number,
     newLevel: number | null,
+    newTotalXP: number,
     newStreak: number,
     weekGoalReached: boolean,
     habitName: string,
@@ -51,6 +52,7 @@ export const HabitGridView: React.FC<HabitGridViewProps> = ({
         onCheckComplete?.(
           result.xpGained,
           result.newLevel,
+          result.newTotalXP,
           result.newStreak,
           result.weekGoalReached,
           habit.name,

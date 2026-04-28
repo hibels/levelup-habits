@@ -243,6 +243,7 @@ export const useStore = create<AppState>((set, get) => ({
     return {
       xpGained: XP_PER_HABIT_CHECK,
       newLevel: leveledUp ? newLevel : null,
+      newTotalXP: newTotalXP,
       newStreak,
       weekGoalReached,
     };

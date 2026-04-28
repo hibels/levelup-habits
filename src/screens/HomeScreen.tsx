@@ -74,6 +74,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const handleCheckComplete = (
     xpGained: number,
     newLevel: number | null,
+    newTotalXP: number,
     newStreak: number,
     weekGoalReached: boolean,
     habitName: string,
@@ -81,7 +82,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   ) => {
     if (newLevel) {
       setTimeout(() => {
-        navigation.navigate('LevelUp', { level: newLevel, totalXP: profile.totalXP });
+        navigation.navigate('LevelUp', { level: newLevel, totalXP: newTotalXP });
       }, 300);
     } else if (weekGoalReached) {
       setTimeout(() => {
