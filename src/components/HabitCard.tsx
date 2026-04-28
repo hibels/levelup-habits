@@ -60,7 +60,8 @@ export const HabitCard: React.FC<HabitCardProps> = ({
     }
   };
 
-  const streakColor = goalReached ? colors.primary.main : colors.secondary.main;
+  const habitColor = habit.color || colors.primary.main;
+  const streakColor = goalReached ? habitColor : colors.secondary.main;
 
   return (
     <TouchableOpacity
@@ -68,7 +69,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
         styles.container,
         {
           backgroundColor: theme.card,
-          borderColor: isLocked ? theme.border : goalReached ? `${colors.primary.main}40` : theme.border,
+          borderColor: isLocked ? theme.border : goalReached ? `${habitColor}40` : theme.border,
           opacity: isLocked ? 0.6 : 1,
         },
         !isDarkMode && styles.shadow,
@@ -76,6 +77,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
       onLongPress={!isLocked ? onLongPress : undefined}
       activeOpacity={0.95}
     >
+      <View style={[styles.colorBar, { backgroundColor: isLocked ? theme.disabled : habitColor }]} />
       {/* Banner de bloqueado */}
       {isLocked && (
         <View style={[styles.lockedBanner, { backgroundColor: `${colors.secondary.main}18` }]}>
@@ -127,7 +129,8 @@ export const HabitCard: React.FC<HabitCardProps> = ({
             style={[
               styles.progressFill,
               {
-                backgroundColor: goalReached ? colors.primary.main : colors.primary.light,
+                backgroundColor: habitColor,
+                opacity: goalReached ? 1 : 0.5,
                 width: `${(goalProgress / habit.weeklyGoal) * 100}%`,
               },
             ]}
@@ -159,9 +162,9 @@ export const HabitCard: React.FC<HabitCardProps> = ({
               <View
                 style={[
                   styles.dayBox,
-                  isChecked && { backgroundColor: colors.primary.main, borderColor: colors.primary.main },
+                  isChecked && { backgroundColor: habitColor, borderColor: habitColor },
                   !isChecked && isCurrentDay && {
-                    borderColor: colors.primary.main,
+                    borderColor: habitColor,
                     borderWidth: 2,
                   },
                   !isChecked && !isCurrentDay && {
@@ -196,9 +199,20 @@ const styles = StyleSheet.create({
   container: {
     marginHorizontal: spacing.m,
     marginTop: spacing.s,
-    padding: spacing.m,
+    paddingTop: spacing.m,
+    paddingBottom: spacing.m,
+    paddingLeft: spacing.m + 4,
+    paddingRight: spacing.m,
     borderWidth: 1,
     borderRadius: borderRadius.m,
+    overflow: 'hidden',
+  },
+  colorBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
   },
   shadow: {
     shadowColor: '#000',

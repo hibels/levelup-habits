@@ -7,6 +7,8 @@ export interface Habit {
   streak: number; // semanas consecutivas atingindo a meta
   lastStreakWeekKey: string | null; // "YYYY-Www" da última semana contada
   completedDates: string[]; // YYYY-MM-DD
+  color?: string; // hex, ex: "#8B5CF6" — premium
+  iconName?: string; // nome Ionicons, ex: "barbell-outline" — premium
 }
 
 export interface UserProfile {
