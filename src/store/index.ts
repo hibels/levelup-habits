@@ -114,7 +114,7 @@ export const useStore = create<AppState>((set, get) => ({
         ? { ...DEFAULT_PROFILE, ...JSON.parse(profileData) }
         : DEFAULT_PROFILE;
       const themeMode: ThemeMode = (themeData as ThemeMode) || 'light';
-      const isPremium: boolean = __DEV__ || premiumData === 'true';
+      const isPremium: boolean = premiumData === 'true';
       const weeklyReviews: WeeklyReview[] = reviewsData ? JSON.parse(reviewsData) : [];
       const hasOnboarded: boolean = onboardedData === 'true';
       const notificationsEnabled: boolean = notificationsData === 'true';
