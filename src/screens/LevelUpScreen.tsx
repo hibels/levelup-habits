@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Animated,
   TouchableOpacity,
-  Share,
   StatusBar,
   Dimensions,
 } from 'react-native';
@@ -15,6 +14,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation';
 import { getLevelTitle } from '../utils/levels';
 import { colors, spacing, typography, borderRadius } from '../theme';
+import { useStore } from '../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LevelUp'>;
 
@@ -49,6 +49,9 @@ const LEVEL_TAGLINES: Record<number, string> = {
 export const LevelUpScreen: React.FC<Props> = ({ navigation, route }) => {
   const { level, totalXP } = route.params;
   const insets = useSafeAreaInsets();
+  const themeMode = useStore(state => state.themeMode);
+  const isDarkMode = themeMode === 'dark';
+  const theme = isDarkMode ? colors.dark : colors.light;
 
   const levelTitle = getLevelTitle(level);
   const levelIcon = LEVEL_ICONS[level] ?? 'star-outline';
@@ -90,19 +93,9 @@ export const LevelUpScreen: React.FC<Props> = ({ navigation, route }) => {
     ]).start();
   }, []);
 
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `🏆 Subi para o nível ${level} — "${levelTitle}" no LevelUp Habits! Já acumulei ${totalXP} XP. #LevelUpHabits`,
-      });
-    } catch {
-      // ignore
-    }
-  };
-
   return (
-    <Animated.View style={[styles.container, { opacity: bgOpacity }]}>
-      <StatusBar barStyle="light-content" />
+    <Animated.View style={[styles.container, { opacity: bgOpacity, backgroundColor: theme.background }]}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
       {/* Decorative rings */}
       <View style={styles.ringOuter} />
@@ -121,7 +114,7 @@ export const LevelUpScreen: React.FC<Props> = ({ navigation, route }) => {
               <Ionicons name={levelIcon} size={56} color={colors.secondary.main} />
             </View>
           </View>
-          <View style={styles.levelNumberBadge}>
+          <View style={[styles.levelNumberBadge, { borderColor: theme.background }]}>
             <Text style={styles.levelNumber}>{level}</Text>
           </View>
         </Animated.View>
@@ -137,8 +130,8 @@ export const LevelUpScreen: React.FC<Props> = ({ navigation, route }) => {
         <Animated.View
           style={{ transform: [{ translateY: titleTranslate }], opacity: titleOpacity, alignItems: 'center' }}
         >
-          <Text style={styles.levelTitle}>{levelTitle}</Text>
-          <Text style={styles.tagline}>{tagline}</Text>
+          <Text style={[styles.levelTitle, { color: theme.textPrimary }]}>{levelTitle}</Text>
+          <Text style={[styles.tagline, { color: theme.textSecondary }]}>{tagline}</Text>
         </Animated.View>
 
         {/* XP total */}
@@ -149,11 +142,6 @@ export const LevelUpScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Buttons */}
         <Animated.View style={[styles.buttons, { opacity: buttonsOpacity }]}>
-          <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.8}>
-            <Ionicons name="share-outline" size={18} color={colors.secondary.main} />
-            <Text style={styles.shareLabel}>Compartilhar</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.continueButton}
             onPress={() => navigation.goBack()}
@@ -172,7 +160,6 @@ const RING_SIZE = SCREEN_WIDTH * 1.4;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1E',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -234,7 +221,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#0A0F1E',
   },
   levelNumber: {
     color: '#0A0F1E',
@@ -250,13 +236,11 @@ const styles = StyleSheet.create({
   },
   levelTitle: {
     ...typography.h1,
-    color: '#F1F5F9',
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   tagline: {
     ...typography.bodyLarge,
-    color: '#94A3B8',
     textAlign: 'center',
   },
   xpRow: {
@@ -276,8 +260,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   buttons: {
-    width: '100%',
-    gap: spacing.s,
+    alignSelf: 'stretch',
     marginTop: spacing.m,
   },
   continueButton: {
@@ -290,21 +273,5 @@ const styles = StyleSheet.create({
     ...typography.bodyLarge,
     color: '#FFFFFF',
     fontWeight: '700',
-  },
-  shareButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.m,
-    borderRadius: borderRadius.m,
-    borderWidth: 1.5,
-    borderColor: `${colors.secondary.main}60`,
-    backgroundColor: `${colors.secondary.main}12`,
-  },
-  shareLabel: {
-    ...typography.bodyLarge,
-    color: colors.secondary.light,
-    fontWeight: '600',
   },
 });
