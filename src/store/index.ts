@@ -27,8 +27,8 @@ interface AppState {
 
   loadData: () => Promise<void>;
   setViewMode: (mode: 'card' | 'grid') => Promise<void>;
-  addHabit: (name: string, emoji: string, weeklyGoal: number) => Promise<void>;
-  editHabit: (id: string, name: string, emoji: string, weeklyGoal: number) => Promise<void>;
+  addHabit: (name: string, emoji: string, weeklyGoal: number, color?: string, iconName?: string) => Promise<void>;
+  editHabit: (id: string, name: string, emoji: string, weeklyGoal: number, color?: string, iconName?: string) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   checkHabit: (id: string) => Promise<CheckResult>;
   uncheckHabit: (id: string) => Promise<void>;
@@ -151,7 +151,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  addHabit: async (name, emoji, weeklyGoal) => {
+  addHabit: async (name, emoji, weeklyGoal, color, iconName) => {
     const newHabit: Habit = {
       id: Date.now().toString(),
       name,
@@ -161,15 +161,17 @@ export const useStore = create<AppState>((set, get) => ({
       streak: 0,
       lastStreakWeekKey: null,
       completedDates: [],
+      ...(color !== undefined && { color }),
+      ...(iconName !== undefined && { iconName }),
     };
     const habits = [...get().habits, newHabit];
     set({ habits });
     await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch(() => {});
   },
 
-  editHabit: async (id, name, emoji, weeklyGoal) => {
+  editHabit: async (id, name, emoji, weeklyGoal, color, iconName) => {
     const habits = get().habits.map(h =>
-      h.id === id ? { ...h, name, emoji, weeklyGoal } : h
+      h.id === id ? { ...h, name, emoji, weeklyGoal, color, iconName } : h
     );
     set({ habits });
     await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch(() => {});
