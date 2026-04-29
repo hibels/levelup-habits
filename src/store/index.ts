@@ -42,7 +42,7 @@ interface AppState {
   saveWeeklyReview: (review: Omit<WeeklyReview, 'id' | 'createdAt'>) => Promise<void>;
   updateWeeklyReview: (id: string, data: { wentWell: string; toImprove: string }) => Promise<void>;
   deleteWeeklyReview: (id: string) => Promise<void>;
-  completeOnboarding: (name: string, avatar: string, notificationsEnabled: boolean) => Promise<void>;
+  completeOnboarding: (name: string, avatar: string, notificationsEnabled: boolean, photoUri?: string | null) => Promise<void>;
   setPremium: (value: boolean) => Promise<void>;
   setNotificationPreferences: (prefs: NotificationPreferences) => Promise<void>;
 }
@@ -285,6 +285,7 @@ export const useStore = create<AppState>((set, get) => ({
     return {
       xpGained: XP_PER_HABIT_CHECK,
       newLevel: leveledUp ? newLevel : null,
+      newTotalXP: newTotalXP,
       newStreak,
       weekGoalReached,
     };
