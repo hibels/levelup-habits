@@ -1,4 +1,19 @@
 export const enUS = {
+  update: {
+    soft: {
+      title: 'New version available',
+      message: 'A new version ({{version}}) is available on the App Store.',
+      updateButton: 'Update',
+      laterButton: 'Later',
+    },
+    critical: {
+      title: 'Important update',
+      message:
+        'A critical update ({{version}}) is available. We recommend updating for the best experience.',
+      updateButton: 'Update now',
+      laterButton: 'Later',
+    },
+  },
   notifications: {
     reminder: {
       title: 'LevelUp Habits',

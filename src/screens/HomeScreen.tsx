@@ -8,6 +8,8 @@ import { HabitGridView } from '../components/HabitGridView';
 import { EmptyState } from '../components/EmptyState';
 import { FAB } from '../components/FAB';
 import { GoalCelebrationModal } from '../components/GoalCelebrationModal';
+import { UpdateBanner } from '../components/UpdateBanner';
+import { useUpdateContext } from '../context/UpdateContext';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { MAX_FREE_HABITS } from '../utils/levels';
 import { getTodayString } from '../utils/dates';
@@ -39,6 +41,7 @@ function formatTodayDate(): string {
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { habits, profile, themeMode, isPremium, viewMode, setViewMode } = useStore();
   const insets = useSafeAreaInsets();
+  const { softUpdate, dismissBanner } = useUpdateContext();
 
   const isDarkMode = themeMode === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
@@ -167,7 +170,16 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         )}
       </View>
 
-      {/* Section header */}
+      {/* Soft update banner */}
+      {softUpdate && (
+        <UpdateBanner
+          updateInfo={softUpdate}
+          isDarkMode={isDarkMode}
+          onDismiss={dismissBanner}
+        />
+      )}
+
+      {/* View mode toggle */}
       {habits.length > 0 && (
         <View style={[styles.sectionHeader, { borderBottomColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Hábitos</Text>
