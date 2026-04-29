@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { RootNavigator } from './src/navigation';
+import { UpdateProvider } from './src/context/UpdateContext';
 import { useStore } from './src/store';
 import { colors } from './src/theme';
 import { seedDemoData } from './src/utils/demoData';
@@ -58,8 +59,10 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <RootNavigator />
-      <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
+      <UpdateProvider>
+        <RootNavigator />
+        <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
+      </UpdateProvider>
     </SafeAreaProvider>
   );
 }

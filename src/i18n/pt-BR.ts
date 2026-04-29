@@ -1,4 +1,19 @@
 export const ptBR = {
+  update: {
+    soft: {
+      title: 'Nova versão disponível',
+      message: 'Uma nova versão ({{version}}) está disponível na App Store.',
+      updateButton: 'Atualizar',
+      laterButton: 'Depois',
+    },
+    critical: {
+      title: 'Atualização importante',
+      message:
+        'Uma atualização crítica ({{version}}) está disponível. Recomendamos atualizar para continuar aproveitando ao máximo.',
+      updateButton: 'Atualizar agora',
+      laterButton: 'Depois',
+    },
+  },
   notifications: {
     reminder: {
       title: 'LevelUp Habits',
