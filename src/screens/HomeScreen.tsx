@@ -77,6 +77,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const handleCheckComplete = (
     xpGained: number,
     newLevel: number | null,
+    newTotalXP: number,
     newStreak: number,
     weekGoalReached: boolean,
     habitName: string,
@@ -84,7 +85,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   ) => {
     if (newLevel) {
       setTimeout(() => {
-        navigation.navigate('LevelUp', { level: newLevel, totalXP: profile.totalXP });
+        navigation.navigate('LevelUp', { level: newLevel, totalXP: newTotalXP });
       }, 300);
     } else if (weekGoalReached) {
       setTimeout(() => {
@@ -180,35 +181,22 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* View mode toggle */}
       {habits.length > 0 && (
-        <View style={[styles.toggleRow, { backgroundColor: theme.background }]}>
+        <View style={[styles.sectionHeader, { borderBottomColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Hábitos</Text>
           <View style={[styles.segmentedControl, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <TouchableOpacity
-              style={[
-                styles.segment,
-                viewMode === 'card' && { backgroundColor: colors.primary.main },
-              ]}
+              style={[styles.segment, viewMode === 'card' && { backgroundColor: colors.primary.main }]}
               onPress={() => setViewMode('card')}
               activeOpacity={0.7}
             >
-              <Ionicons
-                name="list-outline"
-                size={16}
-                color={viewMode === 'card' ? '#FFFFFF' : theme.textSecondary}
-              />
+              <Ionicons name="list-outline" size={15} color={viewMode === 'card' ? '#FFFFFF' : theme.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.segment,
-                viewMode === 'grid' && { backgroundColor: colors.primary.main },
-              ]}
+              style={[styles.segment, viewMode === 'grid' && { backgroundColor: colors.primary.main }]}
               onPress={() => setViewMode('grid')}
               activeOpacity={0.7}
             >
-              <Ionicons
-                name="grid-outline"
-                size={16}
-                color={viewMode === 'grid' ? '#FFFFFF' : theme.textSecondary}
-              />
+              <Ionicons name="grid-outline" size={15} color={viewMode === 'grid' ? '#FFFFFF' : theme.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -297,7 +285,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.s,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 2,
   },
   statsRow: {
     flexDirection: 'row',
@@ -317,11 +304,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
   },
-  toggleRow: {
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    alignItems: 'flex-end',
-  },
   segmentedControl: {
     flexDirection: 'row',
     borderWidth: 1,
@@ -333,6 +315,20 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxs + 2,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+  },
+  sectionTitle: {
+    ...typography.body,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   scrollView: {
     flex: 1,

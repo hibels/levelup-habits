@@ -38,6 +38,7 @@ export interface LevelConfig {
 export interface CheckResult {
   xpGained: number;
   newLevel: number | null;
+  newTotalXP: number;
   newStreak: number;
   weekGoalReached: boolean;
 }

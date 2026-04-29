@@ -10,9 +10,12 @@ import {
   Switch,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { scheduleDailyReminder, cancelDailyReminder } from '../utils/notifications';
 import { useStore } from '../store';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme';
@@ -45,7 +48,8 @@ export const OnboardingScreen: React.FC<Props> = () => {
 
   // Profile state
   const [name, setName] = useState('');
-  const [selectedAvatar, setSelectedAvatar] = useState(AVATAR_EMOJIS[0]);
+  const [selectedAvatar] = useState('');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   // Habit state
@@ -82,6 +86,23 @@ export const OnboardingScreen: React.FC<Props> = () => {
     });
   }
 
+  const handlePickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para definir sua foto de perfil.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
+
   const handleNotificationsToggle = async (value: boolean) => {
     if (value) {
       const { status } = await import('expo-notifications').then(n => n.requestPermissionsAsync());
@@ -95,19 +116,19 @@ export const OnboardingScreen: React.FC<Props> = () => {
   };
 
   async function handleSkip() {
-    await completeOnboarding(name.trim() || 'Herói', selectedAvatar, notificationsEnabled);
+    await completeOnboarding(name.trim() || 'Herói', selectedAvatar, notificationsEnabled, photoUri);
   }
 
   async function handleFinishWithHabit() {
     const finalName = name.trim() || 'Herói';
-    await completeOnboarding(finalName, selectedAvatar, notificationsEnabled);
+    await completeOnboarding(finalName, selectedAvatar, notificationsEnabled, photoUri);
     if (habitName.trim().length >= 2) {
       await addHabit(habitName.trim(), habitEmoji, weeklyGoal);
     }
   }
 
   async function handleFinishSkipHabit() {
-    await completeOnboarding(name.trim() || 'Herói', selectedAvatar, notificationsEnabled);
+    await completeOnboarding(name.trim() || 'Herói', selectedAvatar, notificationsEnabled, photoUri);
   }
 
   const canAdvanceProfile = name.trim().length >= 2;
@@ -163,8 +184,8 @@ export const OnboardingScreen: React.FC<Props> = () => {
               isDarkMode={isDarkMode}
               name={name}
               setName={setName}
-              selectedAvatar={selectedAvatar}
-              setSelectedAvatar={setSelectedAvatar}
+              photoUri={photoUri}
+              onPickPhoto={handlePickPhoto}
               notificationsEnabled={notificationsEnabled}
               onToggleNotifications={handleNotificationsToggle}
               canAdvance={canAdvanceProfile}
@@ -253,13 +274,13 @@ function WelcomeStep({ theme, isDarkMode, onNext }: {
 
 /* ── Step 1: Profile ─────────────────────────────────────────── */
 
-function ProfileStep({ theme, isDarkMode, name, setName, selectedAvatar, setSelectedAvatar, notificationsEnabled, onToggleNotifications, canAdvance, onNext }: {
+function ProfileStep({ theme, isDarkMode, name, setName, photoUri, onPickPhoto, notificationsEnabled, onToggleNotifications, canAdvance, onNext }: {
   theme: typeof colors.light;
   isDarkMode: boolean;
   name: string;
   setName: (v: string) => void;
-  selectedAvatar: string;
-  setSelectedAvatar: (v: string) => void;
+  photoUri: string | null;
+  onPickPhoto: () => void;
   notificationsEnabled: boolean;
   onToggleNotifications: (v: boolean) => void;
   canAdvance: boolean;
@@ -272,29 +293,29 @@ function ProfileStep({ theme, isDarkMode, name, setName, selectedAvatar, setSele
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={[styles.stepTitle, { color: theme.textPrimary }]}>Crie seu perfil de herói</Text>
+        <Text style={[styles.stepTitle, { color: theme.textPrimary }]}>Crie seu perfil</Text>
         <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
           Personalize sua jornada
         </Text>
 
-        {/* Avatar grid */}
-        <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Escolha seu avatar</Text>
-        <View style={styles.avatarGrid}>
-          {AVATAR_EMOJIS.map(emoji => (
-            <TouchableOpacity
-              key={emoji}
-              style={[
-                styles.avatarOption,
-                { borderColor: emoji === selectedAvatar ? colors.primary.main : theme.border },
-                emoji === selectedAvatar && { backgroundColor: isDarkMode ? colors.primary.dark + '33' : '#D1FAE5' },
-              ]}
-              onPress={() => setSelectedAvatar(emoji)}
-              activeOpacity={0.75}
-            >
-              <Text style={{ fontSize: 28 }}>{emoji}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Photo picker */}
+        <TouchableOpacity style={styles.photoPicker} onPress={onPickPhoto} activeOpacity={0.8}>
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} style={styles.photoImage} />
+          ) : (
+            <View style={[styles.photoPlaceholder, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <Ionicons name="camera-outline" size={28} color={theme.textSecondary} />
+              <Text style={[styles.photoPlaceholderText, { color: theme.textSecondary }]}>
+                Adicionar foto
+              </Text>
+            </View>
+          )}
+          {photoUri && (
+            <View style={styles.photoEditBadge}>
+              <Ionicons name="camera" size={14} color="#fff" />
+            </View>
+          )}
+        </TouchableOpacity>
 
         {/* Name */}
         <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Seu nome ou apelido</Text>
@@ -320,7 +341,7 @@ function ProfileStep({ theme, isDarkMode, name, setName, selectedAvatar, setSele
               Lembretes diários
             </Text>
             <Text style={[typography.caption, { color: theme.textSecondary, marginTop: 2 }]}>
-              Receba uma nudge quando esquecer seus hábitos
+              Receba uma notificação quando esquecer seus hábitos
             </Text>
           </View>
           <Switch
@@ -668,6 +689,41 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: borderRadius.m,
     borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoPicker: {
+    alignSelf: 'center',
+    marginBottom: spacing.l,
+    position: 'relative',
+  },
+  photoImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+  },
+  photoPlaceholder: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xxs,
+  },
+  photoPlaceholderText: {
+    ...typography.caption,
+    fontWeight: '500',
+  },
+  photoEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary.main,
     alignItems: 'center',
     justifyContent: 'center',
   },

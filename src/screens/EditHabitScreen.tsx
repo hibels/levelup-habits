@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
+import { useShallow } from 'zustand/react/shallow';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation';
@@ -90,14 +91,14 @@ type IconTab = 'emoji' | 'icons';
 export const EditHabitScreen: React.FC<Props> = ({ route, navigation }) => {
   const { habitId } = route.params;
   const { habits, addHabit, editHabit, deleteHabit, themeMode, isPremium } = useStore(
-    state => ({
+    useShallow(state => ({
       habits: state.habits,
       addHabit: state.addHabit,
       editHabit: state.editHabit,
       deleteHabit: state.deleteHabit,
       themeMode: state.themeMode,
       isPremium: state.isPremium,
-    })
+    }))
   );
 
   const habit = habitId ? habits.find(h => h.id === habitId) : null;
@@ -594,7 +595,8 @@ const styles = StyleSheet.create({
   emojiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.s,
+    justifyContent: 'space-evenly',
+    rowGap: spacing.s,
   },
   emojiCell: {
     width: 52,
@@ -610,7 +612,8 @@ const styles = StyleSheet.create({
   iconGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.s,
+    justifyContent: 'space-evenly',
+    rowGap: spacing.s,
   },
   iconCell: {
     width: 52,

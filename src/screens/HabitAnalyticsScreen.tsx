@@ -23,7 +23,6 @@ const DAY_NAMES_FULL = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 function getLastFourWeeks(): { shortLabel: string; dates: string[] }[] {
   const today = new Date();
   const dayOfWeek = today.getDay();
-  const labels = ['-3', '-2', '-1', 'Atual'];
   return Array.from({ length: 4 }, (_, idx) => {
     const w = 3 - idx;
     const monday = new Date(today);
@@ -33,7 +32,8 @@ function getLastFourWeeks(): { shortLabel: string; dates: string[] }[] {
       d.setDate(monday.getDate() + i);
       return formatDate(d);
     });
-    return { shortLabel: labels[idx], dates };
+    const label = `${monday.getDate()}/${monday.getMonth() + 1}`;
+    return { shortLabel: label, dates };
   });
 }
 
@@ -122,7 +122,7 @@ export const HabitAnalyticsScreen: React.FC<Props> = ({ navigation, route }) => 
         style={[
           styles.header,
           {
-            paddingTop: insets.top + spacing.s,
+            paddingTop: spacing.s,
             backgroundColor: theme.surface,
             borderColor: theme.border,
           },
