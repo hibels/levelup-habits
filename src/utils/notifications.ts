@@ -1,64 +1,129 @@
 import * as Notifications from 'expo-notifications';
+import { getTodayString } from './dates';
+import { getTranslations } from '../i18n';
+import type { NotificationPreferences } from '../types';
 
-const MESSAGES = [
-  'Já marcou seus hábitos hoje? 💪',
-  'Pequenos passos, grandes conquistas. Bora lá! 🚀',
-  'Seu streak está esperando por você! 🔥',
-  'Um hábito de cada vez. Você consegue! ⭐',
-  'Hora de ganhar XP! Abra o app e marque seus hábitos. 🎯',
-  'Consistência é a chave. Vamos manter o ritmo? 💡',
-  'Você foi incrível ontem. Repita hoje! 🏆',
-  'Cada check conta. Não perca o fio da meada! ✅',
-  'O caminho para o topo começa com um check. Vai lá! 🌟',
-  'Qual hábito você vai marcar primeiro hoje? 🎉',
-  'Lembrete amigável: seus hábitos estão te esperando! 👋',
-  'Não quebre a sequência! Você está indo muito bem. 🔗',
-];
+export const STREAK_MILESTONES = [3, 5, 10, 20, 50];
 
-/**
- * Agenda os próximos 30 lembretes diários ao meio-dia,
- * cada um com uma mensagem aleatória diferente.
- * Cancela qualquer lembrete anterior antes de reagendar.
- */
-export async function scheduleDailyReminder(): Promise<void> {
+const REMINDER_ID_PREFIX = 'reminder-';
+const MOTIVATIONAL_ID_PREFIX = 'motivational-';
+
+function pickMessage(messages: string[], seed: number): string {
+  return messages[seed % messages.length];
+}
+
+export async function requestNotificationPermissions(): Promise<boolean> {
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === 'granted';
+}
+
+export async function rescheduleAllNotifications(
+  prefs: NotificationPreferences,
+  today: string,
+): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
+  if (!prefs.enabled) return;
 
-  const today = new Date();
-  let messageIndex = Math.floor(Math.random() * MESSAGES.length);
+  const t = getTranslations();
+  const now = new Date();
+  const baseSeed = Math.floor(Math.random() * 997);
 
-  for (let i = 1; i <= 30; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    date.setHours(12, 0, 0, 0);
+  for (let i = 0; i < 30; i++) {
+    const date = new Date(today + 'T00:00:00');
+    date.setDate(date.getDate() + i);
+    const dateStr = date.toISOString().split('T')[0];
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'LevelUp Habits',
-        body: MESSAGES[messageIndex % MESSAGES.length],
-        sound: true,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date,
-      },
-    });
+    if (prefs.reminderEnabled) {
+      const reminderDate = new Date(date);
+      reminderDate.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+      if (reminderDate > now) {
+        await Notifications.scheduleNotificationAsync({
+          identifier: `${REMINDER_ID_PREFIX}${dateStr}`,
+          content: {
+            title: t.notifications.reminder.title,
+            body: pickMessage(t.notifications.reminder.bodies, baseSeed + i),
+            sound: true,
+            data: { type: 'reminder' },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: reminderDate,
+          },
+        });
+      }
+    }
 
-    messageIndex++;
+    if (prefs.motivationalEnabled) {
+      const motivationalDate = new Date(date);
+      motivationalDate.setHours(9, 0, 0, 0);
+      if (motivationalDate > now) {
+        await Notifications.scheduleNotificationAsync({
+          identifier: `${MOTIVATIONAL_ID_PREFIX}${dateStr}`,
+          content: {
+            title: t.notifications.motivational.title,
+            body: pickMessage(t.notifications.motivational.bodies, baseSeed + i + 100),
+            sound: true,
+            data: { type: 'motivational' },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: motivationalDate,
+          },
+        });
+      }
+    }
   }
 }
 
-/**
- * Verifica se restam menos de 10 notificações agendadas e reagenda se necessário.
- * Deve ser chamado no início de cada sessão do app.
- */
-export async function ensureRemindersScheduled(): Promise<void> {
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  if (scheduled.length < 10) {
-    await scheduleDailyReminder();
+export async function cancelTodayReminder(today: string): Promise<void> {
+  try {
+    await Notifications.cancelScheduledNotificationAsync(`${REMINDER_ID_PREFIX}${today}`);
+  } catch {
+    // Notification may not exist; ignore
   }
 }
 
-/** Cancela todos os lembretes agendados. */
+export async function sendStreakMilestone(streak: number): Promise<void> {
+  if (!STREAK_MILESTONES.includes(streak)) return;
+  const t = getTranslations();
+  const body = t.notifications.streakMilestone.body.replace('{{streak}}', String(streak));
+  await Notifications.scheduleNotificationAsync({
+    identifier: `streak-${streak}-${Date.now()}`,
+    content: {
+      title: t.notifications.streakMilestone.title,
+      body,
+      sound: true,
+      data: { type: 'streak', streak },
+    },
+    trigger: null,
+  });
+}
+
+// Backward-compatible exports used by OnboardingScreen
+export async function scheduleDailyReminder(): Promise<void> {
+  const defaultPrefs: NotificationPreferences = {
+    enabled: true,
+    reminderEnabled: true,
+    reminderHour: 20,
+    reminderMinute: 0,
+    motivationalEnabled: true,
+  };
+  await rescheduleAllNotifications(defaultPrefs, getTodayString());
+}
+
 export async function cancelDailyReminder(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
+}
+
+export async function ensureRemindersScheduled(
+  prefs?: NotificationPreferences,
+): Promise<void> {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  if (scheduled.length < 10) {
+    if (prefs) {
+      await rescheduleAllNotifications(prefs, getTodayString());
+    } else {
+      await scheduleDailyReminder();
+    }
+  }
 }

@@ -15,6 +15,8 @@ import { WeeklyReviewScreen } from '../screens/WeeklyReviewScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { LevelUpScreen } from '../screens/LevelUpScreen';
 import { HabitAnalyticsScreen } from '../screens/HabitAnalyticsScreen';
+import { UpdateModal } from '../components/UpdateModal';
+import { useUpdateContext } from '../context/UpdateContext';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -83,6 +85,7 @@ export function RootNavigator() {
   const themeMode = useStore(state => state.themeMode);
   const hasOnboarded = useStore(state => state.hasOnboarded);
   const isDarkMode = themeMode === 'dark';
+  const { criticalUpdate, dismissModal } = useUpdateContext();
   const theme = isDarkMode ? colors.dark : colors.light;
 
   const navigationTheme = {
@@ -104,6 +107,7 @@ export function RootNavigator() {
   };
 
   return (
+    <>
     <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator
         screenOptions={{
@@ -151,5 +155,14 @@ export function RootNavigator() {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+    {criticalUpdate && (
+      <UpdateModal
+        visible
+        updateInfo={criticalUpdate}
+        isDarkMode={isDarkMode}
+        onDismiss={dismissModal}
+      />
+    )}
+    </>
   );
 }

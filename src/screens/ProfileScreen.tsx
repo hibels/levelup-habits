@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  Switch,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -23,7 +24,9 @@ LocaleConfig.defaultLocale = 'pt-BR';
 import { useStore } from '../store';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { getLevelTitle } from '../utils/levels';
-import { formatDate } from '../utils/dates';
+import { formatDate, getTodayString } from '../utils/dates';
+import { rescheduleAllNotifications } from '../utils/notifications';
+import type { NotificationPreferences } from '../types';
 import { HabitDetailSheet } from '../components/HabitDetailSheet';
 import type { Habit } from '../types';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -54,7 +57,7 @@ type Props = CompositeScreenProps<
 >;
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
-  const { profile, habits, themeMode, updateProfile, weeklyReviews, isPremium } = useStore();
+  const { profile, habits, themeMode, updateProfile, weeklyReviews, isPremium, notificationPreferences, setNotificationPreferences } = useStore();
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
@@ -154,6 +157,12 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const handleUpdateNotifPrefs = async (partial: Partial<NotificationPreferences>) => {
+    const updated: NotificationPreferences = { ...notificationPreferences, ...partial };
+    await setNotificationPreferences(updated);
+    rescheduleAllNotifications(updated, getTodayString()).catch(() => {});
+  };
+
   const xpForLevel = profile.xp;
   const xpProgress = xpForLevel % 100;
 
@@ -227,6 +236,95 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             theme={theme}
           />
         </View>
+      </View>
+
+      {/* Notificações */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Notificações</Text>
+
+        <View style={[styles.settingRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.settingIconBg, { backgroundColor: `${colors.primary.main}15` }]}>
+            <Ionicons name="notifications" size={20} color={colors.primary.main} />
+          </View>
+          <View style={styles.settingInfo}>
+            <Text style={[styles.settingLabel, { color: theme.textPrimary }]}>Notificações</Text>
+            <Text style={[styles.settingSubLabel, { color: theme.textSecondary }]}>
+              Lembretes e mensagens motivacionais
+            </Text>
+          </View>
+          <Switch
+            value={notificationPreferences.enabled}
+            onValueChange={(v) => handleUpdateNotifPrefs({ enabled: v })}
+            trackColor={{ false: theme.border, true: colors.primary.main }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+
+        {notificationPreferences.enabled && (
+          <>
+            <View style={[styles.settingRow, { backgroundColor: theme.card, borderColor: theme.border, marginTop: spacing.s }]}>
+              <View style={[styles.settingIconBg, { backgroundColor: `${colors.secondary.main}15` }]}>
+                <Ionicons name="alarm" size={20} color={colors.secondary.main} />
+              </View>
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingLabel, { color: theme.textPrimary }]}>Lembrete diário</Text>
+                <Text style={[styles.settingSubLabel, { color: theme.textSecondary }]}>
+                  Se não completou todos os hábitos
+                </Text>
+              </View>
+              <Switch
+                value={notificationPreferences.reminderEnabled}
+                onValueChange={(v) => handleUpdateNotifPrefs({ reminderEnabled: v })}
+                trackColor={{ false: theme.border, true: colors.secondary.main }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            {notificationPreferences.reminderEnabled && (
+              <View style={[styles.timePickerRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <Ionicons name="time-outline" size={18} color={theme.textSecondary} />
+                <Text style={[styles.settingLabel, { color: theme.textPrimary, flex: 1, marginLeft: spacing.s }]}>
+                  Horário do lembrete
+                </Text>
+                <View style={styles.timeControls}>
+                  <TouchableOpacity
+                    onPress={() => handleUpdateNotifPrefs({ reminderHour: (notificationPreferences.reminderHour + 23) % 24 })}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="chevron-back" size={20} color={colors.primary.main} />
+                  </TouchableOpacity>
+                  <Text style={[styles.timeText, { color: theme.textPrimary }]}>
+                    {String(notificationPreferences.reminderHour).padStart(2, '0')}:00
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => handleUpdateNotifPrefs({ reminderHour: (notificationPreferences.reminderHour + 1) % 24 })}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="chevron-forward" size={20} color={colors.primary.main} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            <View style={[styles.settingRow, { backgroundColor: theme.card, borderColor: theme.border, marginTop: spacing.s }]}>
+              <View style={[styles.settingIconBg, { backgroundColor: `${colors.accent.main}15` }]}>
+                <Ionicons name="sunny" size={20} color={colors.accent.main} />
+              </View>
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingLabel, { color: theme.textPrimary }]}>Mensagem motivacional</Text>
+                <Text style={[styles.settingSubLabel, { color: theme.textSecondary }]}>
+                  Inspiração diária às 09:00
+                </Text>
+              </View>
+              <Switch
+                value={notificationPreferences.motivationalEnabled}
+                onValueChange={(v) => handleUpdateNotifPrefs({ motivationalEnabled: v })}
+                trackColor={{ false: theme.border, true: colors.accent.main }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </>
+        )}
       </View>
 
       {/* Calendário mensal de atividade */}
@@ -651,5 +749,48 @@ const styles = StyleSheet.create({
   reviewDate: {
     ...typography.caption,
     marginTop: 2,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.m,
+    borderWidth: 1,
+    borderRadius: borderRadius.m,
+    gap: spacing.s,
+  },
+  settingIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.m,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingInfo: { flex: 1 },
+  settingLabel: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  settingSubLabel: {
+    ...typography.caption,
+    marginTop: 2,
+  },
+  timePickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.m,
+    borderWidth: 1,
+    borderRadius: borderRadius.m,
+    marginTop: spacing.s,
+  },
+  timeControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  timeText: {
+    ...typography.body,
+    fontWeight: '700',
+    minWidth: 44,
+    textAlign: 'center',
   },
 });
