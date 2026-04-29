@@ -11,6 +11,7 @@ module.exports = {
     '^expo/src/winter/runtime(\\.native)?$': '<rootDir>/src/__mocks__/emptyMock.js',
     '^react-native/src/private/animated/NativeAnimatedHelper$': '<rootDir>/src/__mocks__/NativeAnimatedHelper.js',
     '(.*)react-native/Libraries/Animated/AnimatedExports(.*)': 'react-native/Libraries/Animated/AnimatedMock',
+    '^expo-notifications$': '<rootDir>/src/__mocks__/expo-notifications.js',
   },
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',

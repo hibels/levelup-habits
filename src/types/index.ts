@@ -44,3 +44,11 @@ export interface CheckResult {
 }
 
 export type ThemeMode = 'light' | 'dark';
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  reminderEnabled: boolean;
+  reminderHour: number;
+  reminderMinute: number;
+  motivationalEnabled: boolean;
+}
