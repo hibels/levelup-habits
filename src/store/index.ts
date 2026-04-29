@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Habit, UserProfile, CheckResult, ThemeMode, WeeklyReview } from '../types';
+import { Habit, UserProfile, CheckResult, ThemeMode, WeeklyReview, NotificationPreferences } from '../types';
 import {
   getTodayString,
   getCurrentWeekKey,
@@ -13,6 +13,11 @@ import {
   getCurrentLevelXP,
   MAX_FREE_HABITS,
 } from '../utils/levels';
+import {
+  cancelTodayReminder,
+  sendStreakMilestone,
+  STREAK_MILESTONES,
+} from '../utils/notifications';
 
 interface AppState {
   habits: Habit[];
@@ -22,7 +27,7 @@ interface AppState {
   isLoading: boolean;
   weeklyReviews: WeeklyReview[];
   hasOnboarded: boolean;
-  notificationsEnabled: boolean;
+  notificationPreferences: NotificationPreferences;
   viewMode: 'card' | 'grid';
 
   loadData: () => Promise<void>;
@@ -39,6 +44,7 @@ interface AppState {
   deleteWeeklyReview: (id: string) => Promise<void>;
   completeOnboarding: (name: string, avatar: string, notificationsEnabled: boolean) => Promise<void>;
   setPremium: (value: boolean) => Promise<void>;
+  setNotificationPreferences: (prefs: NotificationPreferences) => Promise<void>;
 }
 
 const STORAGE_KEYS = {
@@ -59,6 +65,14 @@ const DEFAULT_PROFILE: UserProfile = {
   level: 1,
   xp: 0,
   totalXP: 0,
+};
+
+const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  enabled: false,
+  reminderEnabled: true,
+  reminderHour: 20,
+  reminderMinute: 0,
+  motivationalEnabled: true,
 };
 
 /** Verifica e redefine o streak se a semana anterior não atingiu a meta */
@@ -85,6 +99,19 @@ function countCompletionsInWeek(habit: Habit, weekDates: string[]): number {
   return habit.completedDates.filter(d => weekDates.includes(d)).length;
 }
 
+function parseNotificationPreferences(raw: string | null): NotificationPreferences {
+  if (!raw) return DEFAULT_NOTIFICATION_PREFERENCES;
+  // Migrate old boolean format
+  if (raw === 'true' || raw === 'false') {
+    return { ...DEFAULT_NOTIFICATION_PREFERENCES, enabled: raw === 'true' };
+  }
+  try {
+    return { ...DEFAULT_NOTIFICATION_PREFERENCES, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_NOTIFICATION_PREFERENCES;
+  }
+}
+
 export const useStore = create<AppState>((set, get) => ({
   habits: [],
   profile: DEFAULT_PROFILE,
@@ -93,7 +120,7 @@ export const useStore = create<AppState>((set, get) => ({
   isLoading: true,
   weeklyReviews: [],
   hasOnboarded: false,
-  notificationsEnabled: false,
+  notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
   viewMode: 'card',
 
   loadData: async () => {
@@ -117,7 +144,7 @@ export const useStore = create<AppState>((set, get) => ({
       const isPremium: boolean = premiumData === 'true';
       const weeklyReviews: WeeklyReview[] = reviewsData ? JSON.parse(reviewsData) : [];
       const hasOnboarded: boolean = onboardedData === 'true';
-      const notificationsEnabled: boolean = notificationsData === 'true';
+      const notificationPreferences = parseNotificationPreferences(notificationsData);
       const viewMode: 'card' | 'grid' = (viewModeData === 'grid' ? 'grid' : 'card');
 
       // Migra hábitos antigos (sem weeklyGoal / lastStreakWeekKey) e recalcula streak
@@ -130,7 +157,7 @@ export const useStore = create<AppState>((set, get) => ({
         return recalcStreakOnLoad(migrated);
       });
 
-      set({ habits, profile, themeMode, isPremium, isLoading: false, weeklyReviews, hasOnboarded, notificationsEnabled, viewMode });
+      set({ habits, profile, themeMode, isPremium, isLoading: false, weeklyReviews, hasOnboarded, notificationPreferences, viewMode });
 
       // Persiste se houve mudança por migração/streak reset
       if (JSON.stringify(rawHabits) !== JSON.stringify(habits)) {
@@ -145,7 +172,7 @@ export const useStore = create<AppState>((set, get) => ({
         isLoading: false,
         weeklyReviews: [],
         hasOnboarded: false,
-        notificationsEnabled: false,
+        notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
         viewMode: 'card',
       });
     }
@@ -185,7 +212,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   checkHabit: async (id): Promise<CheckResult> => {
     const today = getTodayString();
-    const { habits, profile, isPremium } = get();
+    const { habits, profile, isPremium, notificationPreferences } = get();
     const habit = habits.find(h => h.id === id);
 
     if (!habit) throw new Error('Habit not found');
@@ -241,6 +268,19 @@ export const useStore = create<AppState>((set, get) => ({
       AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(updatedHabits)).catch(() => {}),
       AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updatedProfile)).catch(() => {}),
     ]);
+
+    // Cancel today's reminder if all habits are completed
+    if (notificationPreferences.enabled && notificationPreferences.reminderEnabled) {
+      const allDoneToday = updatedHabits.every(h => h.completedDates.includes(today));
+      if (allDoneToday) {
+        cancelTodayReminder(today).catch(() => {});
+      }
+    }
+
+    // Fire streak milestone notification
+    if (weekGoalReached && STREAK_MILESTONES.includes(newStreak) && notificationPreferences.enabled) {
+      sendStreakMilestone(newStreak).catch(() => {});
+    }
 
     return {
       xpGained: XP_PER_HABIT_CHECK,
@@ -348,13 +388,22 @@ export const useStore = create<AppState>((set, get) => ({
     await AsyncStorage.setItem(STORAGE_KEYS.PREMIUM, value ? 'true' : 'false').catch(() => {});
   },
 
+  setNotificationPreferences: async (prefs) => {
+    set({ notificationPreferences: prefs });
+    await AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(prefs)).catch(() => {});
+  },
+
   completeOnboarding: async (name, avatar, notificationsEnabled) => {
     const profile = { ...get().profile, name, avatar };
-    set({ profile, hasOnboarded: true, notificationsEnabled });
+    const notificationPreferences: NotificationPreferences = {
+      ...DEFAULT_NOTIFICATION_PREFERENCES,
+      enabled: notificationsEnabled,
+    };
+    set({ profile, hasOnboarded: true, notificationPreferences });
     await Promise.all([
       AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile)).catch(() => {}),
       AsyncStorage.setItem(STORAGE_KEYS.ONBOARDED, 'true').catch(() => {}),
-      AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, notificationsEnabled ? 'true' : 'false').catch(() => {}),
+      AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notificationPreferences)).catch(() => {}),
     ]);
   },
 }));

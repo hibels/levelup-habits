@@ -24,7 +24,7 @@ Notifications.setNotificationHandler({
 const DEMO_MODE = false;
 
 export default function App() {
-  const { themeMode, isLoading, loadData, notificationsEnabled } = useStore();
+  const { themeMode, isLoading, loadData, notificationPreferences } = useStore();
 
   useEffect(() => {
     const init = async () => {
@@ -38,10 +38,10 @@ export default function App() {
 
   // Reagenda lembretes ao abrir o app se necessário
   useEffect(() => {
-    if (!isLoading && notificationsEnabled) {
-      ensureRemindersScheduled();
+    if (!isLoading && notificationPreferences.enabled) {
+      ensureRemindersScheduled(notificationPreferences);
     }
-  }, [isLoading, notificationsEnabled]);
+  }, [isLoading, notificationPreferences]);
 
   // Show loading screen while data is loading
   if (isLoading) {
