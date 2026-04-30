@@ -48,6 +48,9 @@ export const AchievementUnlockModal: React.FC<Props> = ({ achievement, isDarkMod
   const cardTranslateY = useRef(new Animated.Value(80)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
   const progressBorder = useRef(new Animated.Value(0)).current;
+  const pulseScale = useRef(new Animated.Value(1)).current;
+  const pulseOpacity = useRef(new Animated.Value(0.6)).current;
+  const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
   const [particles] = useState<ConfettiParticle[]>(() =>
     Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
       x: new Animated.Value(SCREEN_WIDTH * 0.5 + (Math.random() - 0.5) * 60),
@@ -72,6 +75,9 @@ export const AchievementUnlockModal: React.FC<Props> = ({ achievement, isDarkMod
     progressBorder.setValue(0);
     particles.forEach(p => { p.opacity.setValue(0); p.y.setValue(SCREEN_HEIGHT * 0.3); });
 
+    pulseScale.setValue(1);
+    pulseOpacity.setValue(0.6);
+
     Animated.sequence([
       Animated.timing(scrimOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
       Animated.parallel([
@@ -79,7 +85,21 @@ export const AchievementUnlockModal: React.FC<Props> = ({ achievement, isDarkMod
         Animated.spring(cardTranslateY, { toValue: 0, friction: 6, tension: 80, useNativeDriver: true }),
       ]),
       Animated.timing(textOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-    ]).start();
+    ]).start(() => {
+      pulseLoop.current = Animated.loop(
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(pulseScale, { toValue: 1.5, duration: 900, useNativeDriver: true }),
+            Animated.timing(pulseScale, { toValue: 1, duration: 900, useNativeDriver: true }),
+          ]),
+          Animated.sequence([
+            Animated.timing(pulseOpacity, { toValue: 0, duration: 900, useNativeDriver: true }),
+            Animated.timing(pulseOpacity, { toValue: 0.6, duration: 900, useNativeDriver: true }),
+          ]),
+        ])
+      );
+      pulseLoop.current.start();
+    });
 
     // Confetti burst
     InteractionManager.runAfterInteractions(() => {
@@ -108,6 +128,7 @@ export const AchievementUnlockModal: React.FC<Props> = ({ achievement, isDarkMod
       if (finished) onClose();
     });
 
+    return () => { pulseLoop.current?.stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [achievement]);
 
@@ -163,12 +184,23 @@ export const AchievementUnlockModal: React.FC<Props> = ({ achievement, isDarkMod
             ]}
           />
 
-          <Ionicons
-            name={achievement.icon as never}
-            size={72}
-            color={colors.secondary.main}
-            style={styles.icon}
-          />
+          {/* Top card glow */}
+          <View style={styles.cardGlow} />
+
+          {/* Icon with pulsing ring */}
+          <View style={styles.iconWrapper}>
+            <Animated.View
+              style={[
+                styles.pulseRing,
+                { transform: [{ scale: pulseScale }], opacity: pulseOpacity },
+              ]}
+            />
+            <Ionicons
+              name={achievement.icon as never}
+              size={72}
+              color={colors.secondary.main}
+            />
+          </View>
 
           <Animated.View style={{ opacity: textOpacity, alignItems: 'center' }}>
             <Text style={styles.modalTitle}>
@@ -221,8 +253,31 @@ const styles = StyleSheet.create({
     height: 3,
     backgroundColor: colors.primary.main,
   },
-  icon: {
+  cardGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    backgroundColor: colors.secondary.main,
+    opacity: 0.08,
+    borderTopLeftRadius: borderRadius.l,
+    borderTopRightRadius: borderRadius.l,
+  },
+  iconWrapper: {
+    width: 100,
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: spacing.m,
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: colors.secondary.main,
   },
   modalTitle: {
     ...typography.h3,

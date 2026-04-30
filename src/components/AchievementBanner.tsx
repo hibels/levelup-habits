@@ -9,7 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Achievement } from '../types';
-import { colors, spacing, typography, borderRadius } from '../theme';
+import { colors, spacing, typography, borderRadius, shadows } from '../theme';
 import { getTranslations } from '../i18n';
 import { resolveAchievementTitle } from '../utils/achievements';
 
@@ -24,6 +24,7 @@ interface Props {
 export const AchievementBanner: React.FC<Props> = ({ achievement, onPress, onDismiss }) => {
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(-120)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const t = getTranslations() as Record<string, unknown>;
@@ -32,12 +33,19 @@ export const AchievementBanner: React.FC<Props> = ({ achievement, onPress, onDis
   useEffect(() => {
     if (!achievement) return;
 
-    Animated.spring(translateY, {
-      toValue: 0,
-      friction: 8,
-      tension: 60,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.spring(translateY, {
+        toValue: 0,
+        friction: 8,
+        tension: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
     timer.current = setTimeout(() => {
       handleDismiss();
@@ -51,11 +59,10 @@ export const AchievementBanner: React.FC<Props> = ({ achievement, onPress, onDis
 
   const handleDismiss = () => {
     if (timer.current) clearTimeout(timer.current);
-    Animated.timing(translateY, {
-      toValue: -120,
-      duration: 250,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
+    Animated.parallel([
+      Animated.timing(translateY, { toValue: -120, duration: 250, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start(({ finished }) => {
       if (finished) onDismiss();
     });
   };
@@ -63,59 +70,90 @@ export const AchievementBanner: React.FC<Props> = ({ achievement, onPress, onDis
   if (!achievement) return null;
 
   const title = resolveAchievementTitle(achievement, t);
-  const recentBadgeText = (ach.recentBadge ?? 'Desbloqueaste: {name}').replace('{name}', title);
+  const label = ach.recentBadgeLabel ?? (t as Record<string, Record<string, string>>).achievements?.unlockModalTitle ?? 'Nova conquista!';
 
   return (
     <Animated.View
       style={[
-        styles.banner,
-        { paddingTop: insets.top + spacing.xs, transform: [{ translateY }] },
+        styles.wrapper,
+        { top: insets.top + spacing.s, transform: [{ translateY }], opacity },
       ]}
     >
       <TouchableOpacity
-        style={styles.content}
+        style={styles.toast}
         onPress={() => { handleDismiss(); onPress?.(); }}
-        activeOpacity={0.9}
+        activeOpacity={0.92}
       >
-        <Ionicons name="trophy" size={18} color="#FFFFFF" style={styles.icon} />
-        <Text style={styles.text} numberOfLines={1}>
-          {recentBadgeText}
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={handleDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Ionicons name="close" size={18} color="#FFFFFF" />
+        {/* Icon badge */}
+        <View style={styles.iconBadge}>
+          <Ionicons name={achievement.icon as never} size={22} color={colors.secondary.main} />
+        </View>
+
+        {/* Text */}
+        <View style={styles.textBlock}>
+          <Text style={styles.labelText}>{label}</Text>
+          <Text style={styles.nameText} numberOfLines={1}>{title}</Text>
+        </View>
+
+        {/* Dismiss */}
+        <TouchableOpacity
+          onPress={handleDismiss}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.closeBtn}
+        >
+          <Ionicons name="close" size={16} color="rgba(255,255,255,0.5)" />
+        </TouchableOpacity>
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  banner: {
+  wrapper: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.secondary.main,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.m,
-    paddingBottom: spacing.s,
+    left: spacing.m,
+    right: spacing.m,
     zIndex: 999,
-    borderBottomLeftRadius: borderRadius.s,
-    borderBottomRightRadius: borderRadius.s,
   },
-  content: {
-    flex: 1,
+  toast: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#1A1A2E',
+    borderRadius: borderRadius.m,
+    borderWidth: 1,
+    borderColor: colors.secondary.main,
+    paddingVertical: spacing.s,
+    paddingHorizontal: spacing.s,
+    gap: spacing.s,
+    ...shadows.medium,
   },
-  icon: {
-    marginRight: spacing.xs,
+  iconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,193,7,0.12)',
+    borderWidth: 1.5,
+    borderColor: colors.secondary.main,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  text: {
-    ...typography.label,
-    color: '#FFFFFF',
-    fontWeight: '600',
+  textBlock: {
     flex: 1,
+  },
+  labelText: {
+    ...typography.caption,
+    color: colors.secondary.main,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  nameText: {
+    ...typography.body,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  closeBtn: {
+    padding: spacing.xxs,
   },
 });

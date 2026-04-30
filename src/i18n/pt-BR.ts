@@ -58,9 +58,10 @@ export const ptBR = {
     sectionTitle: 'Troféus',
     progress: '{unlocked}/{total} conquistados',
     seeAll: 'Ver todos',
-    unlockModalTitle: 'Conquista Desbloqueada!',
-    congratsButton: 'Incrível, obrigado!',
-    recentBadge: 'Desbloqueaste: {name}',
+    unlockModalTitle: 'Nova Conquista!',
+    congratsButton: 'Arrasou!',
+    recentBadge: 'Nova conquista: {name}',
+    recentBadgeLabel: 'Nova conquista!',
     emptyState: {
       title: 'Ainda não há troféus',
       description: 'Complete seus primeiros hábitos para conquistar troféus!',

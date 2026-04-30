@@ -58,9 +58,10 @@ export const enUS = {
     sectionTitle: 'Trophies',
     progress: '{unlocked}/{total} unlocked',
     seeAll: 'See all',
-    unlockModalTitle: 'Achievement Unlocked!',
-    congratsButton: 'Amazing, thank you!',
-    recentBadge: 'Unlocked: {name}',
+    unlockModalTitle: 'New Achievement!',
+    congratsButton: 'Awesome!',
+    recentBadge: 'New achievement: {name}',
+    recentBadgeLabel: 'New achievement!',
     emptyState: {
       title: 'No trophies yet',
       description: 'Complete your first habits to earn trophies!',

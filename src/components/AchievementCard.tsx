@@ -6,6 +6,7 @@ import { colors, spacing, typography, borderRadius } from '../theme';
 import { getTranslations } from '../i18n';
 import { resolveAchievementTitle, resolveAchievementDescription } from '../utils/achievements';
 
+
 interface AchievementCardProps {
   achievement: Achievement;
   isDarkMode: boolean;
@@ -18,6 +19,7 @@ export const AchievementCard = React.memo<AchievementCardProps>(
     const theme = isDarkMode ? colors.dark : colors.light;
     const t = getTranslations() as Record<string, unknown>;
     const title = resolveAchievementTitle(achievement, t);
+    const description = resolveAchievementDescription(achievement, t);
     const isUnlocked = achievement.unlockedAt !== null;
     const isLockedPremium = !isUnlocked && achievement.tier === 'premium' && !isPremium;
 
@@ -91,13 +93,21 @@ export const AchievementCard = React.memo<AchievementCardProps>(
             )}
           </>
         ) : isLockedPremium ? (
-          <Text style={[styles.premiumLabel, { color: colors.secondary.main }]}>
-            {(t as Record<string, Record<string, string>>).achievements?.lockedLabel ?? 'Premium'}
-          </Text>
+          <>
+            <Text style={[styles.premiumLabel, { color: colors.secondary.main }]}>
+              {(t as Record<string, Record<string, string>>).achievements?.lockedLabel ?? 'Premium'}
+            </Text>
+            <Text style={[styles.criteriaLabel, { color: theme.textSecondary }]} numberOfLines={2}>
+              {description}
+            </Text>
+          </>
         ) : (
-          <View style={styles.lockRow}>
-            <Ionicons name="lock-closed" size={12} color={theme.disabled} />
-          </View>
+          <>
+            <Ionicons name="lock-closed" size={12} color={theme.disabled} style={styles.lockIcon} />
+            <Text style={[styles.criteriaLabel, { color: theme.textSecondary }]} numberOfLines={2}>
+              {description}
+            </Text>
+          </>
         )}
       </TouchableOpacity>
     );
@@ -147,7 +157,14 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
   },
-  lockRow: {
+  lockIcon: {
     marginTop: 2,
+    marginBottom: spacing.xxs,
+  },
+  criteriaLabel: {
+    ...typography.caption,
+    textAlign: 'center',
+    marginTop: spacing.xxs,
+    opacity: 0.75,
   },
 });
