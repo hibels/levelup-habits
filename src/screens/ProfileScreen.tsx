@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -28,7 +28,11 @@ import { formatDate, getTodayString } from '../utils/dates';
 import { rescheduleAllNotifications } from '../utils/notifications';
 import type { NotificationPreferences } from '../types';
 import { HabitDetailSheet } from '../components/HabitDetailSheet';
+import { AchievementCard } from '../components/AchievementCard';
+import { AchievementsSheet } from '../components/AchievementsSheet';
 import type { Habit } from '../types';
+import { getTranslations } from '../i18n';
+import { ACHIEVEMENT_CATALOG, getRecentAchievement, resolveAchievementTitle } from '../utils/achievements';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -57,17 +61,27 @@ type Props = CompositeScreenProps<
 >;
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
-  const { profile, habits, themeMode, updateProfile, weeklyReviews, isPremium, notificationPreferences, setNotificationPreferences } = useStore();
+  const { profile, habits, themeMode, updateProfile, weeklyReviews, isPremium, notificationPreferences, setNotificationPreferences, achievements } = useStore();
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
   });
 
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
+  const [trophiesExpanded, setTrophiesExpanded] = useState(true);
+  const [showAllSheet, setShowAllSheet] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const trophiesSectionY = useRef(0);
 
   const isDarkMode = themeMode === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
   const levelTitle = getLevelTitle(profile.level);
+  const t = getTranslations() as Record<string, unknown>;
+  const ach = (t as Record<string, Record<string, string>>).achievements ?? {};
+  const unlockedCount = achievements.filter(a => a.unlockedAt !== null).length;
+  const previewAchievements = achievements.slice(0, 6);
+  const recentAchievement = getRecentAchievement(achievements);
+  const recentTitle = recentAchievement ? resolveAchievementTitle(recentAchievement, t) : null;
 
   // Stats
   const totalHabits = habits.length;
@@ -168,6 +182,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={[styles.container, { backgroundColor: theme.background }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
@@ -205,6 +220,20 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           </View>
           <Text style={styles.xpLabel}>{profile.totalXP} XP total</Text>
         </View>
+
+        {/* Recent achievement badge */}
+        {recentAchievement && recentTitle && (
+          <TouchableOpacity
+            style={styles.recentBadge}
+            onPress={() => scrollRef.current?.scrollTo({ y: trophiesSectionY.current, animated: true })}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="trophy" size={14} color={colors.secondary.main} />
+            <Text style={styles.recentBadgeText} numberOfLines={1}>
+              {(ach.recentBadge ?? 'Desbloqueaste: {name}').replace('{name}', recentTitle)}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Stats grid */}
@@ -236,6 +265,75 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             theme={theme}
           />
         </View>
+      </View>
+
+      {/* Troféus */}
+      <View
+        style={styles.section}
+        onLayout={e => { trophiesSectionY.current = e.nativeEvent.layout.y; }}
+      >
+        {/* Section header */}
+        <TouchableOpacity
+          style={[styles.trophyHeader, { backgroundColor: theme.card, borderColor: theme.border }]}
+          onPress={() => setTrophiesExpanded(prev => !prev)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="trophy" size={18} color={colors.secondary.main} />
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary, marginBottom: 0, flex: 1, marginLeft: spacing.xs }]}>
+            {ach.sectionTitle ?? 'Troféus'}
+          </Text>
+          <View style={[styles.progressChip, { backgroundColor: `${colors.secondary.main}20` }]}>
+            <Text style={[styles.progressChipText, { color: colors.secondary.dark }]}>
+              {unlockedCount}/{ACHIEVEMENT_CATALOG.length}
+            </Text>
+          </View>
+          <Ionicons
+            name={trophiesExpanded ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={theme.textSecondary}
+            style={{ marginLeft: spacing.xs }}
+          />
+        </TouchableOpacity>
+
+        {trophiesExpanded && (
+          <>
+            {unlockedCount === 0 && achievements.every(a => a.unlockedAt === null) ? (
+              <View style={styles.emptyTrophies}>
+                <Ionicons name="trophy-outline" size={48} color={theme.disabled} />
+                <Text style={[styles.emptyTitle, { color: theme.textSecondary }]}>
+                  {ach.emptyStateTitle ?? 'Ainda não há troféus'}
+                </Text>
+                <Text style={[styles.emptyDesc, { color: theme.disabled }]}>
+                  {ach.emptyStateDescription ?? 'Complete seus primeiros hábitos para conquistar troféus!'}
+                </Text>
+              </View>
+            ) : (
+              <View style={[styles.trophyGrid, { marginTop: spacing.s }]}>
+                {previewAchievements.map((a, i) => (
+                  <View key={a.id} style={styles.trophyGridItem}>
+                    <AchievementCard
+                      achievement={a}
+                      isDarkMode={isDarkMode}
+                      isPremium={isPremium}
+                      onPremiumPress={() => navigation.navigate('Paywall')}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.seeAllButton}
+              onPress={() => setShowAllSheet(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.seeAllText, { color: colors.primary.main }]}>
+                {ach.seeAll ?? 'Ver todos'}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.primary.main} />
+            </TouchableOpacity>
+          </>
+        )}
       </View>
 
       {/* Notificações */}
@@ -488,6 +586,15 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         visible={!!selectedHabit}
         onClose={() => setSelectedHabit(null)}
         isDarkMode={isDarkMode}
+      />
+
+      <AchievementsSheet
+        visible={showAllSheet}
+        achievements={achievements}
+        isDarkMode={isDarkMode}
+        isPremium={isPremium}
+        onClose={() => setShowAllSheet(false)}
+        onPremiumPress={() => { setShowAllSheet(false); navigation.navigate('Paywall'); }}
       />
     </ScrollView>
   );
@@ -791,6 +898,72 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: '700',
     minWidth: 44,
+    textAlign: 'center',
+  },
+  recentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs,
+    backgroundColor: 'rgba(245,158,11,0.15)',
+    paddingHorizontal: spacing.s,
+    paddingVertical: spacing.xxs + 2,
+    borderRadius: borderRadius.m,
+    marginTop: spacing.m,
+    maxWidth: '90%',
+  },
+  recentBadgeText: {
+    ...typography.caption,
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  trophyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.m,
+    borderWidth: 1,
+    borderRadius: borderRadius.m,
+    marginBottom: spacing.xxs,
+  },
+  progressChip: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xxs,
+    borderRadius: borderRadius.full,
+  },
+  progressChipText: {
+    ...typography.caption,
+    fontWeight: '700',
+  },
+  trophyGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.s,
+  },
+  trophyGridItem: {
+    width: '47.5%',
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xxs,
+    paddingVertical: spacing.s,
+    marginTop: spacing.xs,
+  },
+  seeAllText: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  emptyTrophies: {
+    alignItems: 'center',
+    paddingVertical: spacing.l,
+    gap: spacing.s,
+  },
+  emptyTitle: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  emptyDesc: {
+    ...typography.caption,
     textAlign: 'center',
   },
 });

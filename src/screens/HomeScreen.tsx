@@ -9,6 +9,9 @@ import { EmptyState } from '../components/EmptyState';
 import { FAB } from '../components/FAB';
 import { GoalCelebrationModal } from '../components/GoalCelebrationModal';
 import { UpdateBanner } from '../components/UpdateBanner';
+import { AchievementUnlockModal } from '../components/AchievementUnlockModal';
+import { AchievementBanner } from '../components/AchievementBanner';
+import { Achievement } from '../types';
 import { useUpdateContext } from '../context/UpdateContext';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import { MAX_FREE_HABITS } from '../utils/levels';
@@ -39,7 +42,7 @@ function formatTodayDate(): string {
 }
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
-  const { habits, profile, themeMode, isPremium, viewMode, setViewMode } = useStore();
+  const { habits, profile, themeMode, isPremium, viewMode, setViewMode, checkAndUnlockAchievements } = useStore();
   const insets = useSafeAreaInsets();
   const { softUpdate, dismissBanner } = useUpdateContext();
 
@@ -54,6 +57,9 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     streak: number;
     xpGained: number;
   }>({ visible: false, habitName: '', habitEmoji: '', streak: 0, xpGained: 0 });
+
+  const [achievementQueue, setAchievementQueue] = useState<Achievement[]>([]);
+  const [bannerAchievement, setBannerAchievement] = useState<Achievement | null>(null);
 
   const today = getTodayString();
   const checkableHabits = habits.filter((_, i) => isPremium || i < MAX_FREE_HABITS);
@@ -74,7 +80,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     navigation.navigate('EditHabit', { habitId });
   };
 
-  const handleCheckComplete = (
+  const handleCheckComplete = async (
     xpGained: number,
     newLevel: number | null,
     newStreak: number,
@@ -97,6 +103,25 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         });
       }, 300);
     }
+
+    const unlocked = await checkAndUnlockAchievements(false);
+    if (unlocked.length > 0) {
+      setTimeout(() => {
+        setAchievementQueue(unlocked);
+      }, weekGoalReached || newLevel ? 600 : 300);
+    }
+  };
+
+  const currentAchievement = achievementQueue[0] ?? null;
+
+  const handleAchievementClose = () => {
+    setAchievementQueue(prev => {
+      const next = prev.slice(1);
+      if (next.length === 0 && prev[0]) {
+        setBannerAchievement(prev[0]);
+      }
+      return next;
+    });
   };
 
   return (
@@ -260,6 +285,18 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         xpGained={celebration.xpGained}
         isDarkMode={isDarkMode}
         onClose={() => setCelebration(prev => ({ ...prev, visible: false }))}
+      />
+
+      <AchievementUnlockModal
+        achievement={currentAchievement}
+        isDarkMode={isDarkMode}
+        onClose={handleAchievementClose}
+      />
+
+      <AchievementBanner
+        achievement={bannerAchievement}
+        onDismiss={() => setBannerAchievement(null)}
+        onPress={() => navigation.navigate('Profile')}
       />
     </View>
   );

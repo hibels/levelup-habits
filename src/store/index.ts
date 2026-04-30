@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Habit, UserProfile, CheckResult, ThemeMode, WeeklyReview, NotificationPreferences } from '../types';
+import { Habit, UserProfile, CheckResult, ThemeMode, WeeklyReview, NotificationPreferences, Achievement } from '../types';
 import {
   getTodayString,
   getCurrentWeekKey,
@@ -18,6 +18,11 @@ import {
   sendStreakMilestone,
   STREAK_MILESTONES,
 } from '../utils/notifications';
+import {
+  buildInitialAchievements,
+  checkAchievementCondition,
+  ACHIEVEMENT_CATALOG,
+} from '../utils/achievements';
 
 interface AppState {
   habits: Habit[];
@@ -29,6 +34,7 @@ interface AppState {
   hasOnboarded: boolean;
   notificationPreferences: NotificationPreferences;
   viewMode: 'card' | 'grid';
+  achievements: Achievement[];
 
   loadData: () => Promise<void>;
   setViewMode: (mode: 'card' | 'grid') => Promise<void>;
@@ -45,6 +51,7 @@ interface AppState {
   completeOnboarding: (name: string, avatar: string, notificationsEnabled: boolean) => Promise<void>;
   setPremium: (value: boolean) => Promise<void>;
   setNotificationPreferences: (prefs: NotificationPreferences) => Promise<void>;
+  checkAndUnlockAchievements: (silent?: boolean) => Promise<Achievement[]>;
 }
 
 const STORAGE_KEYS = {
@@ -56,6 +63,7 @@ const STORAGE_KEYS = {
   ONBOARDED: '@levelup:onboarded',
   NOTIFICATIONS: '@levelup:notifications',
   VIEW_MODE: '@levelup:viewMode',
+  ACHIEVEMENTS: '@levelup:achievements',
 };
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -122,10 +130,11 @@ export const useStore = create<AppState>((set, get) => ({
   hasOnboarded: false,
   notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
   viewMode: 'card',
+  achievements: buildInitialAchievements(),
 
   loadData: async () => {
     try {
-      const [habitsData, profileData, themeData, premiumData, reviewsData, onboardedData, notificationsData, viewModeData] = await Promise.all([
+      const [habitsData, profileData, themeData, premiumData, reviewsData, onboardedData, notificationsData, viewModeData, achievementsData] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.HABITS).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.PROFILE).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.THEME).catch(() => null),
@@ -134,6 +143,7 @@ export const useStore = create<AppState>((set, get) => ({
         AsyncStorage.getItem(STORAGE_KEYS.ONBOARDED).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATIONS).catch(() => null),
         AsyncStorage.getItem(STORAGE_KEYS.VIEW_MODE).catch(() => null),
+        AsyncStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS).catch(() => null),
       ]);
 
       const rawHabits: Habit[] = habitsData ? JSON.parse(habitsData) : [];
@@ -147,6 +157,13 @@ export const useStore = create<AppState>((set, get) => ({
       const notificationPreferences = parseNotificationPreferences(notificationsData);
       const viewMode: 'card' | 'grid' = (viewModeData === 'grid' ? 'grid' : 'card');
 
+      // Merge stored achievements with catalog (add new ones if catalog expanded)
+      const storedAchievements: Achievement[] = achievementsData ? JSON.parse(achievementsData) : [];
+      const achievements: Achievement[] = ACHIEVEMENT_CATALOG.map(catalog => {
+        const stored = storedAchievements.find(a => a.id === catalog.id);
+        return stored ?? { ...catalog, unlockedAt: null };
+      });
+
       // Migra hábitos antigos (sem weeklyGoal / lastStreakWeekKey) e recalcula streak
       const habits = rawHabits.map(h => {
         const migrated: Habit = {
@@ -157,11 +174,28 @@ export const useStore = create<AppState>((set, get) => ({
         return recalcStreakOnLoad(migrated);
       });
 
-      set({ habits, profile, themeMode, isPremium, isLoading: false, weeklyReviews, hasOnboarded, notificationPreferences, viewMode });
+      set({ habits, profile, themeMode, isPremium, isLoading: false, weeklyReviews, hasOnboarded, notificationPreferences, viewMode, achievements });
 
       // Persiste se houve mudança por migração/streak reset
       if (JSON.stringify(rawHabits) !== JSON.stringify(habits)) {
         await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits)).catch(() => {});
+      }
+
+      // Retroactive silent achievement check on load
+      const newlyUnlocked = ACHIEVEMENT_CATALOG
+        .filter(catalog => {
+          const a = achievements.find(x => x.id === catalog.id);
+          return a && a.unlockedAt === null && checkAchievementCondition(catalog.id, habits, profile);
+        })
+        .map(catalog => catalog.id);
+
+      if (newlyUnlocked.length > 0) {
+        const now = new Date().toISOString();
+        const updated = achievements.map(a =>
+          newlyUnlocked.includes(a.id) ? { ...a, unlockedAt: now } : a
+        );
+        set({ achievements: updated });
+        await AsyncStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(updated)).catch(() => {});
       }
     } catch {
       set({
@@ -174,6 +208,7 @@ export const useStore = create<AppState>((set, get) => ({
         hasOnboarded: false,
         notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
         viewMode: 'card',
+        achievements: buildInitialAchievements(),
       });
     }
   },
@@ -405,5 +440,28 @@ export const useStore = create<AppState>((set, get) => ({
       AsyncStorage.setItem(STORAGE_KEYS.ONBOARDED, 'true').catch(() => {}),
       AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notificationPreferences)).catch(() => {}),
     ]);
+  },
+
+  checkAndUnlockAchievements: async (silent = false): Promise<Achievement[]> => {
+    const { habits, profile, achievements } = get();
+    const now = new Date().toISOString();
+
+    const newlyUnlockedIds = ACHIEVEMENT_CATALOG
+      .filter(catalog => {
+        const a = achievements.find(x => x.id === catalog.id);
+        return a && a.unlockedAt === null && checkAchievementCondition(catalog.id, habits, profile);
+      })
+      .map(catalog => catalog.id);
+
+    if (newlyUnlockedIds.length === 0) return [];
+
+    const updated = achievements.map(a =>
+      newlyUnlockedIds.includes(a.id) ? { ...a, unlockedAt: now } : a
+    );
+    set({ achievements: updated });
+    await AsyncStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(updated)).catch(() => {});
+
+    if (silent) return [];
+    return updated.filter(a => newlyUnlockedIds.includes(a.id));
   },
 }));
