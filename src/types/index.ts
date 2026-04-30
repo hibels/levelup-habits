@@ -45,6 +45,15 @@ export interface CheckResult {
 
 export type ThemeMode = 'light' | 'dark';
 
+export interface Achievement {
+  id: string;
+  titleKey: string;
+  descriptionKey: string;
+  icon: string;
+  tier: 'free' | 'premium';
+  unlockedAt: string | null;
+}
+
 export interface NotificationPreferences {
   enabled: boolean;
   reminderEnabled: boolean;
