@@ -14,6 +14,7 @@ interface HabitGridViewProps {
   onCheckComplete?: (
     xpGained: number,
     newLevel: number | null,
+    newTotalXP: number,
     newStreak: number,
     weekGoalReached: boolean,
     habitName: string,
@@ -51,6 +52,7 @@ export const HabitGridView: React.FC<HabitGridViewProps> = ({
         onCheckComplete?.(
           result.xpGained,
           result.newLevel,
+          result.newTotalXP,
           result.newStreak,
           result.weekGoalReached,
           habit.name,
@@ -134,7 +136,11 @@ export const HabitGridView: React.FC<HabitGridViewProps> = ({
                   disabled={!isInteractive}
                   activeOpacity={isInteractive ? 0.6 : 1}
                 >
-                  <View style={[styles.cellBase, cellStyle]} />
+                  <View style={[styles.cellBase, cellStyle]}>
+                    {isChecked && (
+                      <Ionicons name="checkmark" size={16} color="#fff" />
+                    )}
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -207,6 +213,8 @@ const styles = StyleSheet.create({
     borderRadius: CELL_SIZE / 2,
     borderWidth: 1.5,
     borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cellTodayComplete: {
     backgroundColor: colors.primary.main,
@@ -223,6 +231,7 @@ const styles = StyleSheet.create({
   },
   cellFuture: {
     backgroundColor: 'transparent',
-    borderColor: 'transparent',
+    borderColor: colors.primary.main,
+    opacity: 0.25,
   },
 });
